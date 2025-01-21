@@ -1,0 +1,31 @@
+services:
+  minio:
+    build:
+      context: ./services/minio
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./services/minio/data:/data
+
+  server:
+    build:
+      context: ./services/server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo
+
+  mongo:
+    build:
+      context: ./services/mongodb
+      dockerfile: Dockerfile
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./services/mongodb/data:/data/db
+
+volumes:
+  minio-data:
+  mongo-data:
