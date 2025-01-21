@@ -16,6 +16,8 @@ services:
       - "3000:3000"
     depends_on:
       - mongo
+    volumes:
+      - ./services/server:/app
 
   mongo:
     build:
@@ -26,6 +28,3 @@ services:
     volumes:
       - ./services/mongodb/data:/data/db
 
-volumes:
-  minio-data:
-  mongo-data:
