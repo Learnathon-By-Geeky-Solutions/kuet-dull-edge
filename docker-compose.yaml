@@ -5,6 +5,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "9000:9000"
+    env_file:
+      - ./services/minio/.env
+      - .env
     volumes:
       - ./services/minio/data:/data
 
@@ -14,6 +17,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    env_file:
+      - ./services/server/.env
+      - .env
     depends_on:
       - mongo
     volumes:
@@ -25,6 +31,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "27017:27017"
+    env_file:
+      - ./services/mongodb/.env
+      - .env
     volumes:
       - ./services/mongodb/data:/data/db
 
