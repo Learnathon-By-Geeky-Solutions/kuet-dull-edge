@@ -525,7 +525,7 @@ export class RegistrationService {
         accountStatus: AccountStatus.EMAIL_VERIFICATION
       })
     } catch (error) {
-<span class="cstat-no" title="statement not covered" >      throw new InternalServerErrorException('ISE_DATABASE')</span>
+<span class="cstat-no" title="statement not covered" >      throw new InternalServerErrorException('DATABASE')</span>
     }
 &nbsp;
     // Check if user has a emailVerification document before creating a new one
@@ -547,7 +547,7 @@ export class RegistrationService {
     try {
       await emailVerification.save()
     } catch (error) {
-<span class="cstat-no" title="statement not covered" >      throw new InternalServerErrorException('ISE_DATABASE')</span>
+<span class="cstat-no" title="statement not covered" >      throw new InternalServerErrorException('DATABASE')</span>
     }
 &nbsp;
     // Send verification email
@@ -584,7 +584,7 @@ export class RegistrationService {
       try {
         await emailVerification.save()
       } catch (error) {
-<span class="cstat-no" title="statement not covered" >        throw new InternalServerErrorException('ISE_ERROR')</span>
+<span class="cstat-no" title="statement not covered" >        throw new InternalServerErrorException('ERROR')</span>
       }
       throw new BadRequestException('VERIFICATION_CODE_INVALID')
     }
@@ -593,7 +593,7 @@ export class RegistrationService {
       try {
         await this.emailVerificationModel.deleteOne({ _id })
       } catch (error) {
-<span class="cstat-no" title="statement not covered" >        throw new InternalServerErrorException('ISE_ERROR')</span>
+<span class="cstat-no" title="statement not covered" >        throw new InternalServerErrorException('ERROR')</span>
       }
       await this.userAuthModel.deleteOne({ _id })
       throw new BadRequestException('VERIFICATION_TRIES_EXCEEDED')

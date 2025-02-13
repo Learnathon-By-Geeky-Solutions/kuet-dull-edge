@@ -27,8 +27,8 @@ export class McaptchaGuard implements CanActivate {
         config.captchaProviders[captchaProvider].url,
         payload
       )
-      if (response.status !== 200) throw new HttpException('ISE_C_ERR', 502)
-      if (!response.data) throw new HttpException('ISE_C_ERR', 502)
+      if (response.status !== 200) throw new HttpException('C_ERR', 502)
+      if (!response.data) throw new HttpException('C_ERR', 502)
       const result = response.data['valid']
       if (!result) throw new HttpException('CAPTCHA_FAILED', 400)
       return true

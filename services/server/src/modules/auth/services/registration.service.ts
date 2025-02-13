@@ -48,7 +48,7 @@ export class RegistrationService {
         accountStatus: AccountStatus.EMAIL_VERIFICATION
       })
     } catch (error) {
-      throw new InternalServerErrorException('ISE_DATABASE')
+      throw new InternalServerErrorException('DATABASE')
     }
 
     // Check if user has a emailVerification document before creating a new one
@@ -70,7 +70,7 @@ export class RegistrationService {
     try {
       await emailVerification.save()
     } catch (error) {
-      throw new InternalServerErrorException('ISE_DATABASE')
+      throw new InternalServerErrorException('DATABASE')
     }
 
     // Send verification email
@@ -107,7 +107,7 @@ export class RegistrationService {
       try {
         await emailVerification.save()
       } catch (error) {
-        throw new InternalServerErrorException('ISE_ERROR')
+        throw new InternalServerErrorException('ERROR')
       }
       throw new BadRequestException('VERIFICATION_CODE_INVALID')
     }
@@ -116,7 +116,7 @@ export class RegistrationService {
       try {
         await this.emailVerificationModel.deleteOne({ _id })
       } catch (error) {
-        throw new InternalServerErrorException('ISE_ERROR')
+        throw new InternalServerErrorException('ERROR')
       }
       await this.userAuthModel.deleteOne({ _id })
       throw new BadRequestException('VERIFICATION_TRIES_EXCEEDED')
