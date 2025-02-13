@@ -1,8 +1,8 @@
 # KUET Dull Edge
 
-## ScholarFlow
+## ScholrFlow
 
-ScholarFlow is a versatile and powerful app designed to help students stay organized and boost both academic and personal productivity. Here’s what it offers:
+ScholrFlow is a versatile and powerful app designed to help students stay organized and boost both academic and personal productivity. Here’s what it offers:
 
 1. **Virtual Classroom System**:  
    - Create and participate in virtual classrooms.  
@@ -29,9 +29,9 @@ ScholarFlow is a versatile and powerful app designed to help students stay organ
 6. **AI-Powered Assistant**:  
    - An advanced AI assistant helps with dynamic task management, like creating to-dos and events.  
    - Get RAG-based answers and insights from your uploaded resources.  
-   - Prepare for exams easily with actionable recommendations, such as gathering materials for your next class test.  
+   - Prepare for exams easily with actionable recommendations, such as gathering materials for your next class test.  Dynamic Personality.
 
-ScholarFlow is designed to help students learn better, stay organized, and achieve their academic goals more efficiently.
+ScholrFlow is designed to help students learn better, stay organized, and achieve their academic goals more efficiently.
 
 ## Team Members
 - [ankonroy](https://github.com/ankonroy) (Team Leader)

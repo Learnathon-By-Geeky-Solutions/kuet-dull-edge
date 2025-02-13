@@ -1,0 +1,28 @@
+### Anonymously login
+GET http://localhost:3000/auth/
+
+
+### Register a new user
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+Authorization:  Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NzQ4ZDg3OC01Y2JmLTQzYmYtYmEzYS1mM2I2N2E4ZTQ4MjkiLCJhY2NvdW50U3RhdHVzIjoiYW5vbnltb3VzIiwiaWF0IjoxNzM5MjgwODgyLCJleHAiOjE3MzkzNjcyODJ9.hw_bqXr0OsdmwTEWyOKrdhBPaDIbUpLmglO3AYmUkwE
+
+ {
+    "username": "exampleUser", 
+    "email": "example@example.com",
+    "password": "Example@1234",
+    "captchaToken": "dummyCaptchaToken" 
+    }
+
+#### 
+POST http://localhost:3000/auth/onboarding/oauth
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOm51bGwsImFjY291bnRTdGF0dXMiOiJvbmJvYXJkaW5nX29hdXRoIiwiZGF0YSI6eyJlbWFpbCI6InRhc21pci56aWhhZEBnbWFpbC5jb20ifSwiaWF0IjoxNzM5NDY1NjkzLCJleHAiOjE3Mzk1NTIwOTN9.CE0h3gjfysrt9WHP6YnyYCYMLfVH2289fEAjL0ZRh1E
+
+{
+   "name": "John Doe",
+   "birthday": "1990-01-01",
+   "institute": "Tech University",
+   "instituteIdentifier": "TU12345",
+   "username": "john_doe123"
+}

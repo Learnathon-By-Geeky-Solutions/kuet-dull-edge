@@ -1,3 +1,4 @@
+
 services:
   minio:
     build:
@@ -7,23 +8,10 @@ services:
       - "9000:9000"
     env_file:
       - ./services/minio/.env
-      - .env
     volumes:
       - ./services/minio/data:/data
-
-  server:
-    build:
-      context: ./services/server
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./services/server/.env
-      - .env
-    depends_on:
-      - mongo
-    volumes:
-      - ./services/server:/app
+    networks:
+      - minio-net
 
   mongo:
     build:
@@ -33,7 +21,38 @@ services:
       - "27017:27017"
     env_file:
       - ./services/mongodb/.env
-      - .env
     volumes:
       - ./services/mongodb/data:/data/db
+    networks:
+      - mongo-net
 
+  mcaptcha:
+    extends:
+      file: ./services/mcaptcha/docker-compose.yml
+      service: mcaptcha
+    networks:
+      - mcaptcha-net
+
+  server:
+    build:
+      context: ./services/server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./services/server/.env
+    # Uncomment depends_on if needed for local development
+    #depends_on:
+    #  - mongo
+    #  - mcaptcha
+    volumes:
+      - ./services/server:/app
+    networks:
+      - minio-net
+      - mongo-net
+      - mcaptcha-net
+
+networks:
+  minio-net:
+  mongo-net:
+  mcaptcha-net:
