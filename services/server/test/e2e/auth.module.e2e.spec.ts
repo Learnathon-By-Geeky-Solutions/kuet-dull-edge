@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { INestApplication } from '@nestjs/common'
-import { MongooseModule, getConnectionToken } from '@nestjs/mongoose'
+import { getConnectionToken, MongooseModule } from '@nestjs/mongoose'
 import { config } from '../../src/modules/config'
 import * as request from 'supertest'
 import { AuthModule } from '../../src/modules/auth/auth.module'
+
 describe('AuthModule (e2e)', () => {
   let app: INestApplication
-  let anonymousUserJWT: string
+  //let anonymousUserJWT: string
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MongooseModule.forRoot(config._.test_mongo_uri), AuthModule]

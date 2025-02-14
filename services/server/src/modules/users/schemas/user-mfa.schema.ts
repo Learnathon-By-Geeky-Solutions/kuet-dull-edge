@@ -24,7 +24,7 @@ export class UserMFA extends Document {
 
 export const UserMFASchema = SchemaFactory.createForClass(UserMFA)
 
-UserMFASchema.pre('save', async function(next) {
+UserMFASchema.pre('save', async function (next) {
   if (this.isModified('recoveryCodes') && this.recoveryCodes) {
     const saltRounds = parseInt(process.env.RECOVERY_CODE_SALT_ROUNDS, 10) || 10
     this.recoveryCodes = await Promise.all(
@@ -37,7 +37,7 @@ UserMFASchema.pre('save', async function(next) {
   next()
 })
 
-UserMFASchema.methods.compareRecoveryCode = async function(code: string) {
+UserMFASchema.methods.compareRecoveryCode = async function (code: string) {
   for (const hashedCode of this.recoveryCodes) {
     if (await bcrypt.compare(code, hashedCode)) {
       return true

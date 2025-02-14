@@ -16,7 +16,8 @@ export class EmailVerification extends Document {
   compareVerificationCode: (verificationCode: string) => Promise<boolean>
 }
 
-export const EmailVerificationSchema = SchemaFactory.createForClass(EmailVerification)
+export const EmailVerificationSchema =
+  SchemaFactory.createForClass(EmailVerification)
 
 EmailVerificationSchema.pre('save', async function (next) {
   if (this.isModified('verificationCode')) {
@@ -26,6 +27,8 @@ EmailVerificationSchema.pre('save', async function (next) {
   next()
 })
 
-EmailVerificationSchema.methods.compareVerificationCode = async function(verificationCode: string): Promise<boolean> {
+EmailVerificationSchema.methods.compareVerificationCode = async function (
+  verificationCode: string
+): Promise<boolean> {
   return await bcrypt.compare(verificationCode, this.verificationCode)
 }

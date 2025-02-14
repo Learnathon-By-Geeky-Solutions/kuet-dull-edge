@@ -1,8 +1,9 @@
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import { VersioningType } from '@nestjs/common'
+
 // TODO : Use SSL
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule)
   app.enableVersioning({
     type: VersioningType.URI
@@ -10,4 +11,4 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 3000)
 }
 
-bootstrap()
+bootstrap().then(() => console.log('Server started'))

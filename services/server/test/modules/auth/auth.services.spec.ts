@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { BadRequestException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
-import { MongooseModule, getConnectionToken } from '@nestjs/mongoose'
+import { getConnectionToken, MongooseModule } from '@nestjs/mongoose'
 import { Connection, Model, Types } from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
 import { AuthService } from '../../../src/modules/auth/services/auth.service'
@@ -341,7 +341,7 @@ describe('RegistrationService (in-memory MongoDB)', () => {
       await expect(
         service.registerOnboarding(user._id.toString(), {
           name: 'User Seven',
-          birthday: new Date(),
+          birthday: new Date().toISOString(),
           institute: 'Institute',
           instituteIdentifier: 'ID'
         })
@@ -365,7 +365,7 @@ describe('RegistrationService (in-memory MongoDB)', () => {
 
       const onboardingData = {
         name: 'User Eight',
-        birthday: new Date('1990-01-01'),
+        birthday: new Date('1990-01-01').toISOString(),
         institute: 'Institute',
         instituteIdentifier: 'ID'
       }

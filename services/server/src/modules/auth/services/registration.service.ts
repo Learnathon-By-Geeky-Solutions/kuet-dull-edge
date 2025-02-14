@@ -16,7 +16,6 @@ import { RegisterDto } from '../dto/register.dto'
 import { OAuthOnboardingDto } from '../dto/oauth-onboarding.dto'
 import { OnboardingDto } from '../dto/onboarding.dto'
 import * as crypto from 'crypto'
-import { use } from 'passport'
 
 @Injectable()
 export class RegistrationService {
@@ -33,8 +32,7 @@ export class RegistrationService {
   async registerLocal({
     username,
     password,
-    email,
-    captchaToken
+    email
   }: RegisterDto): Promise<{ token: string }> {
     if (await this.userAuthModel.findOne({ $or: [{ email }, { username }] }))
       throw new ConflictException('USER_EXISTS')
@@ -180,14 +178,14 @@ export class RegistrationService {
       username: userAuth.username,
       name: user.name
     })
-    userPeek.save()
+    await userPeek.save()
     const userDetails = new this.userDetailsModel({
       _id: userId,
       birthday: user.birthday,
       institute: user.institute,
       instituteIdentifier: user.instituteIdentifier
     })
-    userDetails.save()
+    await userDetails.save()
 
     //accountStatus to ACTIVE
     await this.userAuthModel.updateOne(
@@ -212,7 +210,7 @@ export class RegistrationService {
 
   async registerOnboardingOauth(
     onboardingDto: OAuthOnboardingDto,
-    { email, name, photo }: { email: string; name: string; photo: string }
+    { email, photo }: { email: string; photo: string }
   ): Promise<{ token: string }> {
     const randomStr = crypto.randomBytes(8).toString('hex') // Generates a 16-character random string
     const userAuth = new this.userAuthModel({
@@ -229,14 +227,14 @@ export class RegistrationService {
       name: onboardingDto.name,
       photo // FIXME: Copy to minio and save URL
     })
-    userPeek.save()
+    await userPeek.save()
     const userDetails = new this.userDetailsModel({
       _id: userId,
       birthday: onboardingDto.birthday,
       institute: onboardingDto.institute,
       instituteIdentifier: onboardingDto.instituteIdentifier
     })
-    userDetails.save()
+    await userDetails.save()
 
     await this.userAuthModel.updateOne(
       { _id: userId },

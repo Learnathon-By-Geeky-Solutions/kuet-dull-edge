@@ -8,5 +8,4 @@ import { Module } from '@nestjs/common'
   //controllers: [UsersController],
   //exports: [UsersService],
 })
-export class UsersModule {
-}
+export class UsersModule {}
