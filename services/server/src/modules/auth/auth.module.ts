@@ -13,6 +13,8 @@ import { UserAuthSchema } from '../users/schemas/user-auth.schema'
 import { MongooseModule } from '@nestjs/mongoose'
 import { config } from '../config'
 import { GoogleStrategy } from './strategies/google.strategy'
+import { GitHubStrategy } from './strategies/github.strategy'
+import { LocalStrategy } from './strategies/local.strategy'
 
 @Module({
   imports: [
@@ -30,7 +32,14 @@ import { GoogleStrategy } from './strategies/google.strategy'
       signOptions: { expiresIn: '1d' }
     })
   ],
-  providers: [AuthService, RegistrationService, JwtStrategy, GoogleStrategy],
+  providers: [
+    AuthService,
+    RegistrationService,
+    JwtStrategy,
+    GoogleStrategy,
+    GitHubStrategy,
+    LocalStrategy
+  ],
   controllers: [AuthController],
   exports: [JwtModule]
 })

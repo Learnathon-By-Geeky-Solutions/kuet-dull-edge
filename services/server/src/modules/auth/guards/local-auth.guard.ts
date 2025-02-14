@@ -8,7 +8,20 @@ export class LocalAuthGuard extends AuthGuard('local') {
     super()
   }
 
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
+  handleRequest<TUser = any>(
+    err: any,
+    user: any,
+    info: any,
+    context: ExecutionContext,
+    status?: any
+  ): TUser {
+    const req = context.switchToHttp().getRequest()
+    req.userData = user
+    return user
+  }
+  canActivate(
+    context: ExecutionContext
+  ): boolean | Promise<boolean> | Observable<boolean> {
     return super.canActivate(context)
   }
 }

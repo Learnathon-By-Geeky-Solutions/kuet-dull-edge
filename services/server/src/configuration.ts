@@ -10,6 +10,10 @@ export const configuration = {
       oauthClientId: env.GOOGLE_OAUTH_CLIENT_ID,
       oauthClientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET
     },
+    github: {
+      oauthClientId: env.GITHUB_OAUTH_CLIENT_ID,
+      oauthClientSecret: env.GITHUB_OAUTH_CLIENT_SECRET
+    },
     facebook: {
       oauthClientId: env.FACEBOOK_OAUTH_CLIENT_ID,
       oauthClientSecret: env.FACEBOOK_OAUTH_CLIENT_SECRET
@@ -47,6 +51,7 @@ export const configuration = {
   },
   _: {
     //  this portion is not saved in the mongodb config collection
+    base_url: env.BASE_URL,
     mode: env.NODE_ENV,
     config_mongo_uri: env.CONFIG_MONGO_URI,
     port: env.PORT,

@@ -2,12 +2,14 @@ import {
   Body,
   Controller,
   Get,
-  HttpException,
-  HttpStatus,
   Post,
+  Redirect,
   Request,
+  UnauthorizedException,
   UseGuards,
-  UsePipes
+  UsePipes,
+  Version,
+  VERSION_NEUTRAL
 } from '@nestjs/common'
 import { RegistrationService } from './services/registration.service'
 import { AuthService } from './services/auth.service'
@@ -21,15 +23,16 @@ import { AuthGuard } from '@nestjs/passport'
 import { AccountStatus } from '../users/schemas/user-auth.schema'
 import { GoogleAuthGuard } from './guards/google.guard'
 import { OAuthOnboardingDto } from './dto/oauth-onboarding.dto'
+import { LocalAuthGuard } from './guards/local-auth.guard'
 
-@Controller('auth')
+@Controller({ path: 'auth', version: '1' })
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly registrationService: RegistrationService
   ) {}
 
-  // TODO : Load throttle config from config file
+  // TODO : Load throttle config from config file -for all
   @Throttle({ default: { limit: 5, ttl: 3600 } })
   @Get()
   @UsePipes(EmptyBodyValidationPipe)
@@ -37,16 +40,66 @@ export class AuthController {
     return this.authService.getAnonymousUser()
   }
 
+  @Post()
+  @Throttle({
+    default: {
+      limit: 5,
+      ttl: 3600,
+      generateKey: context => context.switchToHttp().getRequest().user.id
+    }
+  })
+  @UseGuards(JwtAuthGuard)
+  @UseGuards(LocalAuthGuard)
+  async login(@Request() req: any) {
+    return req.userData
+  }
+
+  @Throttle({
+    default: {
+      limit: 5,
+      ttl: 3600,
+      generateKey: context => context.switchToHttp().getRequest().user.id
+    }
+  })
   @Get('google')
+  @UseGuards(JwtAuthGuard)
   @UseGuards(GoogleAuthGuard)
   async googleLogin() {
     return
   }
 
+  @Version(VERSION_NEUTRAL)
   @Get('/google/callback')
   @UseGuards(GoogleAuthGuard)
+  @Redirect()
   async googleLoginCallback(@Request() req: any) {
-    return this.authService.signUporLogin(req.user)
+    const { token } = await this.authService.signUporLogin(req.user)
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4000'
+    return { url: `${frontendUrl}/auth/callback?token=${token}` }
+  }
+
+  @Get('github')
+  @Throttle({
+    default: {
+      limit: 5,
+      ttl: 3600,
+      generateKey: context => context.switchToHttp().getRequest().user.id
+    }
+  })
+  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthGuard('github'))
+  async githubLogin() {
+    return
+  }
+
+  @Version(VERSION_NEUTRAL)
+  @Get('/github/callback')
+  @UseGuards(AuthGuard('github'))
+  @Redirect()
+  async githubLoginCallback(@Request() req: any) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4000'
+    const { token } = await this.authService.signUporLogin(req.user)
+    return { url: `${frontendUrl}/auth/callback?token=${token}` }
   }
 
   @Throttle({
@@ -59,9 +112,8 @@ export class AuthController {
   @Post('register')
   @UseGuards(AuthGuard('jwt'))
   async register(@Body() body: RegisterDto, @Request() req: any) {
-    if (req.user.accountStatus !== AccountStatus.ANONYMOUS) {
-      throw new HttpException('UNAUTHORIZED', HttpStatus.UNAUTHORIZED)
-    }
+    if (req.user.accountStatus !== AccountStatus.ANONYMOUS)
+      throw new UnauthorizedException()
     return {
       token: this.registrationService.registerLocal(body)
     }
@@ -80,9 +132,8 @@ export class AuthController {
     @Body() emailVerifyDto: EmailVerifyDto,
     @Request() req: any
   ) {
-    if (req.user.accountStatus !== AccountStatus.EMAIL_VERIFICATION) {
-      throw new HttpException('UNAUTHORIZED', HttpStatus.UNAUTHORIZED)
-    }
+    if (req.user.accountStatus !== AccountStatus.EMAIL_VERIFICATION)
+      throw new UnauthorizedException()
     return this.registrationService.verifyEmail(
       req.user._id,
       emailVerifyDto.verificationCode
@@ -115,9 +166,8 @@ export class AuthController {
   @Post('onboarding/oauth') // TODO : Add throttle
   @UseGuards(JwtAuthGuard)
   async onboardingOauth(@Body() body: OAuthOnboardingDto, @Request() req: any) {
-    if (req.user.accountStatus !== AccountStatus.ONBOARDING_OAUTH) {
-      throw new HttpException('UNAUTHORIZED', HttpStatus.UNAUTHORIZED)
-    }
+    if (req.user.accountStatus !== AccountStatus.ONBOARDING_OAUTH)
+      throw new UnauthorizedException()
     return this.registrationService.registerOnboardingOauth(body, req.user.data)
   }
 }

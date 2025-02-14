@@ -1,6 +1,16 @@
 ### Anonymously login
-GET http://localhost:3000/auth/
+GET http://localhost:3000/v1/auth/
 
+
+### Login
+POST http://localhost:3000/v1/auth/
+Content-Type: application/json
+Authorization:  Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiJmNmZkMDc2Mi1kZjE2LTQxYmEtOGE2OC1lYzVjMmU2MGVhM2YiLCJhY2NvdW50U3RhdHVzIjoiYW5vbnltb3VzIiwiaWF0IjoxNzM5NTIwODAxLCJleHAiOjE3Mzk2MDcyMDF9.LCnTts7MxUoi4Y83oegk-wE29W5WdUZ4VLTEpda9hUs
+
+{
+    "username": "exampleUser", 
+    "password": "Example@1234"
+}
 
 ### Register a new user
 POST http://localhost:3000/auth/register
@@ -15,9 +25,9 @@ Authorization:  Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NzQ4ZDg3
     }
 
 #### 
-POST http://localhost:3000/auth/onboarding/oauth
+POST http://localhost:3000/v1/auth/onboarding/oauth
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOm51bGwsImFjY291bnRTdGF0dXMiOiJvbmJvYXJkaW5nX29hdXRoIiwiZGF0YSI6eyJlbWFpbCI6InRhc21pci56aWhhZEBnbWFpbC5jb20ifSwiaWF0IjoxNzM5NDY1NjkzLCJleHAiOjE3Mzk1NTIwOTN9.CE0h3gjfysrt9WHP6YnyYCYMLfVH2289fEAjL0ZRh1E
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2FlNDJlY2Q0ZGMzODNmZmUwYTAxODUiLCJhY2NvdW50U3RhdHVzIjoiYWN0aXZlIiwiaWF0IjoxNzM5NDc2MDM4LCJleHAiOjE3Mzk1NjI0Mzh9.NprzSlb1UEIPuf5dcgKa_5DPEc2GUdy8gFoMnTGI5_o
 
 {
    "name": "John Doe",

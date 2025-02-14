@@ -9,11 +9,10 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     super({
       clientID: config.authProviders.google.oauthClientId,
       clientSecret: config.authProviders.google.oauthClientSecret,
-      callbackURL: 'http://localhost:3000/auth/google/callback',
+      callbackURL: `${config._.base_url}/auth/google/callback`,
       scope: ['email', 'profile']
     })
   }
-
   async validate(
     accessToken: string,
     refreshToken: string,
