@@ -16,7 +16,7 @@ export default function SignupLayout({
       {/* Header Section */}
       <header className="w-full max-w-md text-center mb-8">
         <h1 className="text-4xl font-semibold text-primary">Sign Up</h1>
-        <p className="text-sm text-gray-500">Welcome! Let's board in.</p>
+        <p className="text-sm text-gray-500">Welcome! Let&apos;s board in.</p>
       </header>
 
       {/* Main Content */}
