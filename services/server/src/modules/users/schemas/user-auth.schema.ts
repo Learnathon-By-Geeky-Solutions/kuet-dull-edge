@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
 import * as bcrypt from 'bcrypt'
+import { config } from '../../config'
 
 export enum AccountStatus {
   ANONYMOUS = 'anonymous',
@@ -26,6 +27,9 @@ export class UserAuth extends Document {
   @Prop({ required: true, select: false })
   password: string
 
+  @Prop({ type: String, required: false })
+  refreshToken: string
+
   comparePassword: (candidatePassword: string) => Promise<boolean>
   /*
      * Shared userid will be used to link all the user related data,
@@ -44,7 +48,7 @@ UserAuthSchema.pre('save', async function (next) {
     return next()
   }
   try {
-    const saltRounds = parseInt(process.env.RECOVERY_CODE_SALT_ROUNDS, 10) || 10
+    const saltRounds = config._.salt_rounds
     this.password = await bcrypt.hash(this.password, saltRounds)
     next()
   } catch (err) {

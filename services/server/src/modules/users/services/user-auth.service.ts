@@ -6,7 +6,7 @@ import { UserPeek } from '../schemas/user-peek.schema'
 import { UserDetails } from '../schemas/user-details.schema'
 
 @Injectable()
-export class UsersService {
+export class UserAuthService {
   constructor(
     @InjectModel(UserAuth.name)
     private readonly userAuthModel: Model<UserAuth>,

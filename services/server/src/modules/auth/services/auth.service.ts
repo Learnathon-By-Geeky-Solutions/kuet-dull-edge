@@ -3,13 +3,15 @@ import { JwtService } from '@nestjs/jwt'
 import { AccountStatus, UserAuth } from '../../users/schemas/user-auth.schema'
 import { v4 } from 'uuid'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
+import { RefreshTokenService } from './refreshToken.service'
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(UserAuth.name) private readonly userAuthModel: Model<UserAuth>,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly refreshTokenService: RefreshTokenService
   ) {}
 
   async getAnonymousUser() {
@@ -21,10 +23,18 @@ export class AuthService {
     }
   }
 
+  getToken(_id: Types.ObjectId, accountStatus: AccountStatus): string {
+    return this.jwtService.sign({
+      _id,
+      accountStatus
+    })
+  }
+
   async validateUser(
     username: string,
     password: string
-  ): Promise<{ token: string }> {
+  ): Promise<{ token: string; refreshToken: string }> {
+    // TODO : MFA
     const user = await this.userAuthModel
       .findOne({ username })
       .select('+password')
@@ -33,14 +43,14 @@ export class AuthService {
     if (!(await user.comparePassword(password)))
       throw new UnauthorizedException('Invalid credentials')
     return {
-      token: this.jwtService.sign({
-        _id: user._id,
-        accountStatus: user.accountStatus
-      })
+      token: this.getToken(user._id, user.accountStatus),
+      refreshToken: await this.refreshTokenService.generateRefreshToken(
+        user._id
+      )
     }
   }
 
-  async signUporLogin({
+  async oauthEntry({
     email,
     name,
     photo
@@ -48,23 +58,40 @@ export class AuthService {
     email: string
     name: string
     photo: string
-  }): Promise<{ token: string }> {
+  }): Promise<{ token: string; refreshToken: any }> {
     const user = await this.userAuthModel.findOne({ email })
-    if (user) {
-      return {
-        token: this.jwtService.sign({
-          _id: user._id,
-          accountStatus: user.accountStatus
-        })
-      }
-    } else {
+    if (!user)
       return {
         token: this.jwtService.sign({
           _id: null,
           accountStatus: AccountStatus.ONBOARDING_OAUTH,
           data: { email, name, photo }
-        })
+        }),
+        refreshToken: null
       }
+    return {
+      token: this.getToken(user._id, user.accountStatus),
+      refreshToken: this.refreshTokenService.generateRefreshToken(user._id)
     }
   }
+
+  async refreshToken(refreshToken: string) {
+    const decoded = this.jwtService.decode(refreshToken)
+    const { userId, rtId } = decoded
+    const user = await this.userAuthModel.findById(userId)
+    if (!user) throw new UnauthorizedException('INVALID_REFRESH_TOKEN')
+    if (
+      !(await this.refreshTokenService.validateRefreshToken(
+        user._id,
+        rtId,
+        refreshToken
+      ))
+    )
+      throw new UnauthorizedException('INVALID_REFRESH_TOKEN')
+
+    return {
+      token: this.getToken(user._id, user.accountStatus)
+    }
+  }
+  //
 }

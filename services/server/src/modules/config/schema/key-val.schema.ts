@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document } from 'mongoose'
 
-export type KeyValDocument = KeyVal & Document;
+export type KeyValDocument = KeyVal & Document
 
 @Schema({ timestamps: true })
 export class KeyVal {

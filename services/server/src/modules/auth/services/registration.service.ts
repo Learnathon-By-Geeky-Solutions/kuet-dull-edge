@@ -17,6 +17,8 @@ import { OAuthOnboardingDto } from '../dto/oauth-onboarding.dto'
 import { OnboardingDto } from '../dto/onboarding.dto'
 import * as crypto from 'crypto'
 
+// FIXME : Use services instead of directly accessing models
+
 @Injectable()
 export class RegistrationService {
   constructor(

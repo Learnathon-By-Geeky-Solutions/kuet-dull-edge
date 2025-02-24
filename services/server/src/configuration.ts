@@ -57,7 +57,8 @@ export const configuration = {
     port: env.PORT,
     jwt_secret: env.JWT_SECRET,
     mongo_uri: env.MONGO_URI,
-    test_mongo_uri: env.TEST_MONGO_URI
+    test_mongo_uri: env.TEST_MONGO_URI,
+    salt_rounds: parseInt(env.SALT_ROUNDS) || 10
   }
 }
 

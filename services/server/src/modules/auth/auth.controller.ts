@@ -5,6 +5,7 @@ import {
   Post,
   Redirect,
   Request,
+  Res,
   UnauthorizedException,
   UseGuards,
   UsePipes,
@@ -23,6 +24,7 @@ import { AuthGuard } from '@nestjs/passport'
 import { AccountStatus } from '../users/schemas/user-auth.schema'
 import { GoogleAuthGuard } from './guards/google.guard'
 import { OAuthOnboardingDto } from './dto/oauth-onboarding.dto'
+import { config } from '../config'
 import { LocalAuthGuard } from './guards/local-auth.guard'
 
 @Controller({ path: 'auth', version: '1' })
@@ -50,8 +52,17 @@ export class AuthController {
   })
   @UseGuards(JwtAuthGuard)
   @UseGuards(LocalAuthGuard)
-  async login(@Request() req: any) {
-    return req.userData
+  async login(@Request() req: any, @Res() res: any) {
+    if (req.userData === undefined)
+      throw new UnauthorizedException('INVALID_CREDENTIALS')
+    const { token, refreshToken } = req.userData
+    res.cookie('refresh-token', refreshToken, {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: config._.mode === 'production'
+    })
+    res.json({ token })
+    // TODO : check MFA
   }
 
   @Throttle({
@@ -73,7 +84,7 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   @Redirect()
   async googleLoginCallback(@Request() req: any) {
-    const { token } = await this.authService.signUporLogin(req.user)
+    const { token } = await this.authService.oauthEntry(req.user)
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4000'
     return { url: `${frontendUrl}/auth/callback?token=${token}` }
   }
@@ -98,7 +109,7 @@ export class AuthController {
   @Redirect()
   async githubLoginCallback(@Request() req: any) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4000'
-    const { token } = await this.authService.signUporLogin(req.user)
+    const { token } = await this.authService.oauthEntry(req.user)
     return { url: `${frontendUrl}/auth/callback?token=${token}` }
   }
 
@@ -169,5 +180,14 @@ export class AuthController {
     if (req.user.accountStatus !== AccountStatus.ONBOARDING_OAUTH)
       throw new UnauthorizedException()
     return this.registrationService.registerOnboardingOauth(body, req.user.data)
+  }
+
+  @Post('refresh-token')
+  @UsePipes(EmptyBodyValidationPipe)
+  async refreshToken(@Request() req: any) {
+    //get token from cookies
+    const refreshToken = req.cookies['refresh-token']
+    if (!refreshToken) throw new UnauthorizedException()
+    return this.authService.refreshToken(refreshToken)
   }
 }

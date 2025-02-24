@@ -15,6 +15,8 @@ import { config } from '../config'
 import { GoogleStrategy } from './strategies/google.strategy'
 import { GitHubStrategy } from './strategies/github.strategy'
 import { LocalStrategy } from './strategies/local.strategy'
+import { RefreshTokenService } from './services/refreshToken.service'
+import { RefreshTokenSchema } from './schemas/refreshToken.schema'
 
 @Module({
   imports: [
@@ -24,7 +26,8 @@ import { LocalStrategy } from './strategies/local.strategy'
       { name: 'UserPeek', schema: UserPeekSchema },
       { name: 'UserDetails', schema: UserDetailsSchema },
       { name: 'EmailVerification', schema: EmailVerificationSchema },
-      { name: 'UserAuth', schema: UserAuthSchema }
+      { name: 'UserAuth', schema: UserAuthSchema },
+      { name: 'RefreshToken', schema: RefreshTokenSchema }
     ]),
     JwtModule.register({
       global: true,
@@ -35,6 +38,7 @@ import { LocalStrategy } from './strategies/local.strategy'
   providers: [
     AuthService,
     RegistrationService,
+    RefreshTokenService,
     JwtStrategy,
     GoogleStrategy,
     GitHubStrategy,
