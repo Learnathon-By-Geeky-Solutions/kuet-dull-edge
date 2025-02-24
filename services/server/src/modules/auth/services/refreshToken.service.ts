@@ -3,16 +3,13 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import { JwtService } from '@nestjs/jwt'
 import { RefreshToken } from '../schemas/refreshToken.schema'
-import { UserAuth } from '../../users/schemas/user-auth.schema'
 import * as bcrypt from 'bcrypt'
 import { ObjectId } from 'mongodb'
-import { config } from '../../config'
 @Injectable()
 export class RefreshTokenService {
   constructor(
     @InjectModel(RefreshToken.name)
     private readonly refreshTokenModel: Model<RefreshToken>,
-    @InjectModel(UserAuth.name) private readonly userAuthModel: Model<UserAuth>,
     private readonly jwtService: JwtService
   ) {}
 
@@ -45,11 +42,7 @@ export class RefreshTokenService {
     return token
   }
 
-  async validateRefreshToken(
-    userId: ObjectId,
-    rtId: ObjectId,
-    token: string
-  ): Promise<boolean> {
+  async validateRefreshToken(userId: ObjectId, rtId: ObjectId, token: string): Promise<boolean> {
     const refreshToken = await this.refreshTokenModel.findOne({
       userId,
       _id: rtId

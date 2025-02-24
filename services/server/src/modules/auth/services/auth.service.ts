@@ -2,14 +2,14 @@ import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { AccountStatus, UserAuth } from '../../users/schemas/user-auth.schema'
 import { v4 } from 'uuid'
-import { InjectModel } from '@nestjs/mongoose'
-import { Model, Types } from 'mongoose'
+import { Types } from 'mongoose'
 import { RefreshTokenService } from './refreshToken.service'
+import { UserAuthService } from '../../users/services/user-auth.service'
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectModel(UserAuth.name) private readonly userAuthModel: Model<UserAuth>,
+    private readonly userAuthService: UserAuthService,
     private readonly jwtService: JwtService,
     private readonly refreshTokenService: RefreshTokenService
   ) {}
@@ -30,23 +30,15 @@ export class AuthService {
     })
   }
 
-  async validateUser(
-    username: string,
-    password: string
-  ): Promise<{ token: string; refreshToken: string }> {
+  async validateUser(username: string, password: string): Promise<{ token: string; refreshToken: string }> {
     // TODO : MFA
-    const user = await this.userAuthModel
-      .findOne({ username })
-      .select('+password')
+    const user = await this.userAuthService.findByEmailOrUsername('', username)
     if (!user) throw new UnauthorizedException('INVALID_CREDENTIALS')
 
-    if (!(await user.comparePassword(password)))
-      throw new UnauthorizedException('Invalid credentials')
+    if (!(await user.comparePassword(password))) throw new UnauthorizedException('Invalid credentials')
     return {
       token: this.getToken(user._id, user.accountStatus),
-      refreshToken: await this.refreshTokenService.generateRefreshToken(
-        user._id
-      )
+      refreshToken: await this.refreshTokenService.generateRefreshToken(user._id)
     }
   }
 
@@ -59,7 +51,7 @@ export class AuthService {
     name: string
     photo: string
   }): Promise<{ token: string; refreshToken: any }> {
-    const user = await this.userAuthModel.findOne({ email })
+    const user = await this.userAuthService.findByEmailOrUsername(email, '')
     if (!user)
       return {
         token: this.jwtService.sign({
@@ -78,20 +70,13 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     const decoded = this.jwtService.decode(refreshToken)
     const { userId, rtId } = decoded
-    const user = await this.userAuthModel.findById(userId)
+    const user = await this.userAuthService.findById(userId)
     if (!user) throw new UnauthorizedException('INVALID_REFRESH_TOKEN')
-    if (
-      !(await this.refreshTokenService.validateRefreshToken(
-        user._id,
-        rtId,
-        refreshToken
-      ))
-    )
+    if (!(await this.refreshTokenService.validateRefreshToken(user._id, rtId, refreshToken)))
       throw new UnauthorizedException('INVALID_REFRESH_TOKEN')
 
     return {
       token: this.getToken(user._id, user.accountStatus)
     }
   }
-  //
 }

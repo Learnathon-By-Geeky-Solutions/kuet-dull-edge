@@ -17,16 +17,14 @@ import { GitHubStrategy } from './strategies/github.strategy'
 import { LocalStrategy } from './strategies/local.strategy'
 import { RefreshTokenService } from './services/refreshToken.service'
 import { RefreshTokenSchema } from './schemas/refreshToken.schema'
+import { EmailVerificationService } from './services/emailVerification.service'
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     UsersModule,
     MongooseModule.forFeature([
-      { name: 'UserPeek', schema: UserPeekSchema },
-      { name: 'UserDetails', schema: UserDetailsSchema },
       { name: 'EmailVerification', schema: EmailVerificationSchema },
-      { name: 'UserAuth', schema: UserAuthSchema },
       { name: 'RefreshToken', schema: RefreshTokenSchema }
     ]),
     JwtModule.register({
@@ -42,7 +40,9 @@ import { RefreshTokenSchema } from './schemas/refreshToken.schema'
     JwtStrategy,
     GoogleStrategy,
     GitHubStrategy,
-    LocalStrategy
+    LocalStrategy,
+    EmailVerificationService,
+    RefreshTokenService
   ],
   controllers: [AuthController],
   exports: [JwtModule]

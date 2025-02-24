@@ -1,96 +1,50 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
-import { UserAuth } from '../schemas/user-auth.schema'
-import { UserPeek } from '../schemas/user-peek.schema'
-import { UserDetails } from '../schemas/user-details.schema'
+import { AccountStatus, UserAuth } from '../schemas/user-auth.schema'
 
 @Injectable()
 export class UserAuthService {
-  constructor(
-    @InjectModel(UserAuth.name)
-    private readonly userAuthModel: Model<UserAuth>,
-    @InjectModel(UserPeek.name)
-    private readonly userPeekModel: Model<UserPeek>,
-    @InjectModel(UserDetails.name)
-    private readonly userDetailsModel: Model<UserDetails>
-  ) {}
+  constructor(@InjectModel(UserAuth.name) private readonly userAuthModel: Model<UserAuth>) {}
 
-  // --- UserAuth-related functions ---
-
-  async findUserAuthByQuery(
-    query: Partial<{ email: string; username: string }>
-  ): Promise<UserAuth | null> {
-    return this.userAuthModel.findOne(query).exec()
-  }
-
-  async findUserAuthByUsername(
-    username: string,
-    withPassword: boolean = false
-  ): Promise<UserAuth | null> {
-    const query = this.userAuthModel.findOne({ username })
-    if (withPassword) query.select('+password')
-    return query.exec()
-  }
-
-  async findUserAuthByEmail(email: string): Promise<UserAuth | null> {
-    return this.userAuthModel.findOne({ email }).exec()
-  }
-
-  async findUserAuthById(
-    id: string | Types.ObjectId
-  ): Promise<UserAuth | null> {
-    return this.userAuthModel.findById(id).exec()
-  }
-
-  async createUserAuth(data: Partial<UserAuth>): Promise<UserAuth> {
+  async findByEmailOrUsername(email: string, username: string): Promise<UserAuth | null> {
     try {
-      return await this.userAuthModel.create(data)
+      return await this.userAuthModel.findOne({ $or: [{ email }, { username }] })
     } catch (error) {
-      throw new InternalServerErrorException('DATABASE')
+      throw new InternalServerErrorException('DATABASE_ERROR')
     }
   }
 
-  async updateUserAuth(
-    id: string | Types.ObjectId,
-    update: Partial<UserAuth>
-  ): Promise<void> {
-    await this.userAuthModel.updateOne({ _id: id }, update).exec()
-  }
-
-  async deleteUserAuth(id: string | Types.ObjectId): Promise<void> {
-    await this.userAuthModel.deleteOne({ _id: id }).exec()
-  }
-
-  // --- UserPeek-related function ---
-
-  async createUserPeek(data: {
-    _id: string | Types.ObjectId
-    username: string
-    name: string
-    photo?: string
-  }): Promise<UserPeek> {
-    const userPeek = new this.userPeekModel(data)
+  async createUserAuth(userAuthData: Partial<UserAuth>): Promise<UserAuth> {
     try {
-      return await userPeek.save()
+      const userAuth = new this.userAuthModel(userAuthData)
+      return await userAuth.save()
     } catch (error) {
-      throw new InternalServerErrorException('DATABASE')
+      throw new InternalServerErrorException('DATABASE_ERROR')
     }
   }
 
-  // --- UserDetails-related function ---
-
-  async createUserDetails(data: {
-    _id: string | Types.ObjectId
-    birthday: Date
-    institute: string
-    instituteIdentifier: string
-  }): Promise<UserDetails> {
-    const userDetails = new this.userDetailsModel(data)
+  async findById(id: string): Promise<UserAuth | null> {
     try {
-      return await userDetails.save()
+      return await this.userAuthModel.findById(id)
     } catch (error) {
-      throw new InternalServerErrorException('DATABASE')
+      throw new InternalServerErrorException('DATABASE_ERROR')
+    }
+  }
+
+  async updateAccountStatus(id: Types.ObjectId, accountStatus: AccountStatus): Promise<void> {
+    try {
+      await this.userAuthModel.updateOne({ _id: id }, { accountStatus })
+    } catch (error) {
+      throw new InternalServerErrorException('DATABASE_ERROR')
+    }
+  }
+
+  async updateUserAuth(id: Types.ObjectId, updateData: Partial<UserAuth>): Promise<void> {
+    try {
+      await this.userAuthModel.updateOne({ _id: id }, updateData)
+    } catch (error) {
+      throw new InternalServerErrorException('DATABASE_ERROR')
     }
   }
 }

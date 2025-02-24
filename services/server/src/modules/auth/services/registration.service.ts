@@ -1,47 +1,33 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  InternalServerErrorException
-} from '@nestjs/common'
-import { Model } from 'mongoose'
-import { InjectModel } from '@nestjs/mongoose'
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 
-import { AccountStatus, UserAuth } from '../../users/schemas/user-auth.schema'
-import { UserPeek } from '../../users/schemas/user-peek.schema'
-import { UserDetails } from '../../users/schemas/user-details.schema'
-import { EmailVerification } from '../schemas/email-verification.schema'
+import { AccountStatus } from '../../users/schemas/user-auth.schema'
 import { RegisterDto } from '../dto/register.dto'
 import { OAuthOnboardingDto } from '../dto/oauth-onboarding.dto'
 import { OnboardingDto } from '../dto/onboarding.dto'
+import { EmailVerificationService } from './emailVerification.service'
+import { UserAuthService } from '../../users/services/user-auth.service'
+import { UserPeekService } from '../../users/services/user-peek.service'
+import { UserDetailsService } from '../../users/services/user-details.service'
 import * as crypto from 'crypto'
-
-// FIXME : Use services instead of directly accessing models
+import { Types } from 'mongoose'
 
 @Injectable()
 export class RegistrationService {
   constructor(
-    @InjectModel(UserAuth.name) private readonly userAuthModel: Model<UserAuth>,
-    @InjectModel(UserPeek.name) private readonly userPeekModel: Model<UserPeek>,
-    @InjectModel(UserDetails.name)
-    private readonly userDetailsModel: Model<UserDetails>,
-    @InjectModel(EmailVerification.name)
-    private readonly emailVerificationModel: Model<EmailVerification>,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly emailVerificationService: EmailVerificationService,
+    private readonly userAuthService: UserAuthService,
+    private readonly userPeekService: UserPeekService,
+    private readonly userDetailsService: UserDetailsService
   ) {}
 
-  async registerLocal({
-    username,
-    password,
-    email
-  }: RegisterDto): Promise<{ token: string }> {
-    if (await this.userAuthModel.findOne({ $or: [{ email }, { username }] }))
-      throw new ConflictException('USER_EXISTS')
+  async registerLocal({ username, password, email }: RegisterDto): Promise<{ token: string }> {
+    if (await this.userAuthService.findByEmailOrUsername(email, username)) throw new ConflictException('USER_EXISTS')
 
     let userAuth
     try {
-      userAuth = await this.userAuthModel.create({
+      userAuth = await this.userAuthService.createUserAuth({
         email,
         username,
         password,
@@ -51,27 +37,8 @@ export class RegistrationService {
       throw new InternalServerErrorException('DATABASE')
     }
 
-    // Check if user has a emailVerification document before creating a new one
-    const existingEmailVerification = await this.emailVerificationModel.findOne(
-      { _id: userAuth._id }
-    )
-    if (existingEmailVerification) {
-      await existingEmailVerification.deleteOne({ userId: userAuth._id })
-    }
-
-    // 6 digit verification code
-    const verificationCode = Math.floor(
-      100000 + Math.random() * 900000
-    ).toString()
-    const emailVerification = new this.emailVerificationModel({
-      _id: userAuth._id,
-      verificationCode: verificationCode
-    })
-    try {
-      await emailVerification.save()
-    } catch (error) {
-      throw new InternalServerErrorException('DATABASE')
-    }
+    // Create email verification
+    const verificationCode = await this.emailVerificationService.createVerification(userAuth._id.toString())
 
     // Send verification email
     this.sendVerificationEmail(email, verificationCode)
@@ -83,51 +50,21 @@ export class RegistrationService {
     return { token }
   }
 
-  async verifyEmail(
-    _id: string,
-    verificationCode: string
-  ): Promise<{ token: string }> {
-    //check if userAuth exists and is in EMAIL_VERIFICATION status
-    const userAuth = await this.userAuthModel.findById(_id)
-    if (
-      !userAuth ||
-      userAuth.accountStatus !== AccountStatus.EMAIL_VERIFICATION
-    )
+  async verifyEmail(_id: string, verificationCode: string): Promise<{ token: string }> {
+    // Check if userAuth exists and is in EMAIL_VERIFICATION status
+    const userAuth = await this.userAuthService.findById(_id)
+    if (!userAuth || userAuth.accountStatus !== AccountStatus.EMAIL_VERIFICATION)
       throw new BadRequestException('INVALID_ACCOUNT_STATUS')
-    const emailVerification = await this.emailVerificationModel.findOne({
-      _id
-    })
-    //check if emailVerification exists
-    if (!emailVerification)
-      throw new BadRequestException('VERIFICATION_INVALID_ID')
-    //check if verificationCode is valid
-    if (!(await emailVerification.compareVerificationCode(verificationCode))) {
-      //increment tries
-      emailVerification.tries++
-      try {
-        await emailVerification.save()
-      } catch (error) {
-        throw new InternalServerErrorException('ERROR')
-      }
+
+    // Verify the code
+    const isValid = await this.emailVerificationService.verifyCode(_id, verificationCode)
+    if (!isValid) {
       throw new BadRequestException('VERIFICATION_CODE_INVALID')
     }
-    //if tries > 10, delete emailVerification and userAuth
-    if (emailVerification.tries > 10) {
-      try {
-        await this.emailVerificationModel.deleteOne({ _id })
-      } catch (error) {
-        throw new InternalServerErrorException('ERROR')
-      }
-      await this.userAuthModel.deleteOne({ _id })
-      throw new BadRequestException('VERIFICATION_TRIES_EXCEEDED')
-    }
+
     // Update userAuth accountStatus to ONBOARDING
-    await this.userAuthModel.updateOne(
-      { _id },
-      { accountStatus: AccountStatus.ONBOARDING }
-    )
-    // Delete emailVerification
-    await this.emailVerificationModel.deleteOne({ _id })
+    await this.userAuthService.updateAccountStatus(_id as any as Types.ObjectId, AccountStatus.ONBOARDING)
+
     return {
       token: this.jwtService.sign({
         userId: _id,
@@ -137,63 +74,37 @@ export class RegistrationService {
   }
 
   async resendVerificationEmail(_id: string): Promise<void> {
-    //check if 1 minute has passed since last email
-    const emailVerification = await this.emailVerificationModel.findOne({
-      _id
-    })
-    if (
-      emailVerification &&
-      emailVerification.createdAt.getTime() + 60000 > Date.now()
-    )
-      throw new BadRequestException('EMAIL_VERIFICATION_RESEND_TOO_SOON')
-    // delete previous emailVerification
-    await this.emailVerificationModel.deleteOne({ _id })
-    // create new emailVerification
-    const verificationCode = Math.floor(
-      100000 + Math.random() * 900000
-    ).toString()
-    const emailVerificationNew = new this.emailVerificationModel({
-      _id,
-      verificationCode
-    })
-    try {
-      await emailVerificationNew.save()
-    } catch (error) {
-      throw new InternalServerErrorException('EMAIL_VERIFICATION_SAVE_ERROR')
-    }
+    // Check if email can be resent
+    await this.emailVerificationService.canResendEmail(_id)
+
+    // Create new email verification
+    const verificationCode = await this.emailVerificationService.createVerification(_id)
+
     // Send verification email
-    const userAuth = await this.userAuthModel.findById(_id)
+    const userAuth = await this.userAuthService.findById(_id)
     this.sendVerificationEmail(userAuth.email, verificationCode)
   }
 
-  async registerOnboarding(
-    userId: string,
-    user: OnboardingDto
-  ): Promise<{ token: string }> {
-    // validity checked in contoller
-    const userAuth = await this.userAuthModel.findById(userId)
-    //check if userAuth's status is ONBOARDING
-    if (userAuth.accountStatus !== AccountStatus.ONBOARDING)
-      throw new BadRequestException('INVALID_ACCOUNT_STATUS')
-    const userPeek = new this.userPeekModel({
+  async registerOnboarding(userId: string, user: OnboardingDto): Promise<{ token: string }> {
+    // validity checked in controller
+    const userAuth = await this.userAuthService.findById(userId)
+    // Check if userAuth's status is ONBOARDING
+    if (userAuth.accountStatus !== AccountStatus.ONBOARDING) throw new BadRequestException('INVALID_ACCOUNT_STATUS')
+
+    const userPeek = await this.userPeekService.createUserPeek({
       _id: userId,
       username: userAuth.username,
       name: user.name
     })
-    await userPeek.save()
-    const userDetails = new this.userDetailsModel({
+    await this.userDetailsService.createUserDetails({
       _id: userId,
-      birthday: user.birthday,
+      birthday: new Date(user.birthday),
       institute: user.institute,
       instituteIdentifier: user.instituteIdentifier
     })
-    await userDetails.save()
 
-    //accountStatus to ACTIVE
-    await this.userAuthModel.updateOne(
-      { _id: userId },
-      { accountStatus: AccountStatus.ACTIVE }
-    )
+    // Update accountStatus to ACTIVE
+    await this.userAuthService.updateAccountStatus(userId as any as Types.ObjectId, AccountStatus.ACTIVE)
     return {
       token: this.jwtService.sign({
         userId,
@@ -215,35 +126,27 @@ export class RegistrationService {
     { email, photo }: { email: string; photo: string }
   ): Promise<{ token: string }> {
     const randomStr = crypto.randomBytes(8).toString('hex') // Generates a 16-character random string
-    const userAuth = new this.userAuthModel({
+    const userAuth = await this.userAuthService.createUserAuth({
       username: onboardingDto.username,
       email,
       password: randomStr,
       accountStatus: AccountStatus.ONBOARDING_OAUTH
     })
-    await userAuth.save()
     const userId = userAuth._id
-    const userPeek = new this.userPeekModel({
+    const userPeek = await this.userPeekService.createUserPeek({
       _id: userId,
       username: onboardingDto.username,
       name: onboardingDto.name,
       photo // FIXME: Copy to minio and save URL
     })
-    await userPeek.save()
-    const userDetails = new this.userDetailsModel({
+    await this.userDetailsService.createUserDetails({
       _id: userId,
-      birthday: onboardingDto.birthday,
+      birthday: new Date(onboardingDto.birthday),
       institute: onboardingDto.institute,
       instituteIdentifier: onboardingDto.instituteIdentifier
     })
-    await userDetails.save()
 
-    await this.userAuthModel.updateOne(
-      { _id: userId },
-      { username: onboardingDto.username, accountStatus: AccountStatus.ACTIVE }
-    )
-    userAuth.accountStatus = AccountStatus.ACTIVE
-    await userAuth.save()
+    await this.userAuthService.updateAccountStatus(userId, AccountStatus.ACTIVE)
     return {
       token: this.jwtService.sign({
         userId,
