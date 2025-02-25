@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
-import { AccountStatus, UserAuth } from '../../users/schemas/user-auth.schema'
+import { AccountStatus } from '../../users/schemas/user-auth.schema'
 import { v4 } from 'uuid'
 import { Types } from 'mongoose'
 import { RefreshTokenService } from './refreshToken.service'
@@ -63,7 +63,7 @@ export class AuthService {
       }
     return {
       token: this.getToken(user._id, user.accountStatus),
-      refreshToken: this.refreshTokenService.generateRefreshToken(user._id)
+      refreshToken: await this.refreshTokenService.generateRefreshToken(user._id)
     }
   }
 
