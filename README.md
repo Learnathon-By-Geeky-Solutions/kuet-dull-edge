@@ -4,7 +4,9 @@
 
 Live deployment(frontend) : [ScholrFlow](https://kuet-dull-edge-test.onrender.com/)
 
-ScholarFlow is a versatile and powerful app designed to help students stay organized and boost both academic and personal productivity. Here’s what it offers:
+## ScholrFlow
+
+ScholrFlow is a versatile and powerful app designed to help students stay organized and boost both academic and personal productivity. Here’s what it offers:
 
 1. **Virtual Classroom System**:
 
@@ -38,7 +40,7 @@ ScholarFlow is a versatile and powerful app designed to help students stay organ
    - Get RAG-based answers and insights from your uploaded resources.
    - Prepare for exams easily with actionable recommendations, such as gathering materials for your next class test.
 
-ScholarFlow is designed to help students learn better, stay organized, and achieve their academic goals more efficiently.
+ScholrFlow is designed to help students learn better, stay organized, and achieve their academic goals more efficiently.
 
 ## Team Members
 
