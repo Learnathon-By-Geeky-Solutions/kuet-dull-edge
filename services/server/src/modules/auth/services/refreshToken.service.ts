@@ -1,10 +1,9 @@
-import { Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { JwtService } from '@nestjs/jwt'
 import { RefreshToken } from '../schemas/refreshToken.schema'
 import * as bcrypt from 'bcrypt'
-import { ObjectId } from 'mongodb'
 @Injectable()
 export class RefreshTokenService {
   constructor(
@@ -13,13 +12,13 @@ export class RefreshTokenService {
     private readonly jwtService: JwtService
   ) {}
 
-  async generateRefreshToken(userId: ObjectId): Promise<string> {
+  async generateRefreshToken(userId: Types.ObjectId): Promise<string> {
     let token: string
     let attempt = 0
     while (attempt < 5) {
       const session = await this.refreshTokenModel.db.startSession()
       try {
-        const rtId = new ObjectId()
+        const rtId = new Types.ObjectId()
         token = this.jwtService.sign(
           { rtId, userId },
           { expiresIn: '30d' } // FIXME: use config
@@ -42,7 +41,7 @@ export class RefreshTokenService {
     return token
   }
 
-  async validateRefreshToken(userId: ObjectId, rtId: ObjectId, token: string): Promise<boolean> {
+  async validateRefreshToken(userId: Types.ObjectId, rtId: Types.ObjectId, token: string): Promise<boolean> {
     const refreshToken = await this.refreshTokenModel.findOne({
       userId,
       _id: rtId
@@ -51,11 +50,21 @@ export class RefreshTokenService {
     return await refreshToken.compareToken(token)
   }
 
-  async deleteRefreshToken(userId: string, token: string): Promise<void> {
-    await this.refreshTokenModel.deleteOne({
+  async deleteRefreshToken(userId: Types.ObjectId, rtId: Types.ObjectId, token: string): Promise<void> {
+    //find
+    const refreshToken = await this.refreshTokenModel.findOne({
       userId,
-      tokenHash: await bcrypt.hash(token, 10)
-    }) // FIXME: use config
+      _id: rtId
+    })
+    if (!refreshToken) throw new UnauthorizedException('REFRESH_TOKEN_NOT_FOUND')
+    //compare
+    const isValid = await refreshToken.compareToken(token)
+    if (!isValid) throw new UnauthorizedException('REFRESH_TOKEN_INVALID')
+    //delete
+    await refreshToken.deleteOne({
+      userId,
+      _id: rtId
+    })
   }
 
   async deleteRefreshTokens(userId: string): Promise<void> {

@@ -48,12 +48,11 @@ export class EmailVerificationService {
       } catch (error) {
         throw new InternalServerErrorException('ERROR')
       }
+      if (emailVerification.tries > 10) {
+        await this.emailVerificationModel.deleteOne({ _id: userId })
+        throw new BadRequestException('VERIFICATION_TRIES_EXCEEDED')
+      }
       return false
-    }
-
-    if (emailVerification.tries > 10) {
-      await this.emailVerificationModel.deleteOne({ _id: userId })
-      throw new BadRequestException('VERIFICATION_TRIES_EXCEEDED')
     }
 
     // Clean up after successful verification

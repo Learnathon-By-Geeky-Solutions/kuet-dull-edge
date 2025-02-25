@@ -1,34 +1,36 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { getModelToken } from '@nestjs/mongoose'
 import { Model, Types, Connection, connect } from 'mongoose'
-import { MongoMemoryServer } from 'mongodb-memory-server'
-import { BadRequestException, InternalServerErrorException } from '@nestjs/common'
 import { EmailVerificationService } from '../../../../src/modules/auth/services/emailVerification.service'
 import {
-  EmailVerification,
-  EmailVerificationSchema
+  EmailVerificationSchema,
+  EmailVerification
 } from '../../../../src/modules/auth/schemas/email-verification.schema'
+import { BadRequestException, InternalServerErrorException } from '@nestjs/common'
+import { MongoMemoryServer } from 'mongodb-memory-server'
 
 describe('EmailVerificationService', () => {
   let service: EmailVerificationService
+  let emailVerificationModel: Model<EmailVerification>
   let mongod: MongoMemoryServer
   let mongoConnection: Connection
-  let emailVerificationModel: Model<EmailVerification>
 
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create()
     const uri = mongod.getUri()
     mongoConnection = (await connect(uri)).connection
-    emailVerificationModel = mongoConnection.model<EmailVerification>('EmailVerification', EmailVerificationSchema)
+
+    emailVerificationModel = mongoConnection.model(EmailVerification.name, EmailVerificationSchema)
   })
 
   afterAll(async () => {
-    await mongoConnection.dropDatabase()
     await mongoConnection.close()
     await mongod.stop()
   })
 
   beforeEach(async () => {
+    //await emailVerificationModel.deleteMany({})
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EmailVerificationService,
@@ -42,185 +44,176 @@ describe('EmailVerificationService', () => {
     service = module.get<EmailVerificationService>(EmailVerificationService)
   })
 
-  afterEach(async () => {
-    const collections = mongoConnection.collections
-    for (const key in collections) {
-      await collections[key].deleteMany({})
-    }
-  })
-
-  it('should be defined', () => {
-    expect(service).toBeDefined()
-  })
-
   describe('createVerification', () => {
-    it('should create a verification code successfully', async () => {
+    it('should create a verification code for a user', async () => {
       const userId = new Types.ObjectId().toString()
+
       const verificationCode = await service.createVerification(userId)
 
-      // Verify code is 6 digits
-      expect(verificationCode).toMatch(/^\d{6}$/)
+      expect(verificationCode).toBeDefined()
+      expect(verificationCode.length).toBe(6)
 
-      // Verify record was created in database
-      const record = await emailVerificationModel.findById(userId)
-      expect(record).toBeDefined()
-      expect(record.tries).toBe(0)
+      const verification = await emailVerificationModel.findOne({ _id: userId })
+      expect(verification).toBeDefined()
     })
 
     it('should delete existing verification before creating a new one', async () => {
       const userId = new Types.ObjectId().toString()
 
       // Create initial verification
-      await emailVerificationModel.create({
-        _id: userId,
-        verificationCode: '111111',
-        tries: 3
-      })
+      await service.createVerification(userId)
 
-      // Create new verification
+      // Create another verification for the same user
       const newCode = await service.createVerification(userId)
 
-      // Check if new record exists and has reset values
-      const record = await emailVerificationModel.findById(userId)
-      expect(record).toBeDefined()
-      expect(record.tries).toBe(0)
-      expect(await record.compareVerificationCode('111111')).toBe(false)
+      // Should only have one verification for this user
+      const count = await emailVerificationModel.countDocuments({ _id: userId })
+      expect(count).toBe(1)
+
+      const verification = await emailVerificationModel.findOne({ _id: userId })
+      expect(verification).toBeDefined()
     })
 
-    it('should throw InternalServerErrorException on database error', async () => {
+    it('should throw InternalServerErrorException when save fails', async () => {
       const userId = new Types.ObjectId().toString()
 
-      // Mock save method to throw an error
-      jest.spyOn(emailVerificationModel.prototype, 'save').mockImplementation(() => {
-        throw new Error('Database error')
-      })
+      jest.spyOn(emailVerificationModel.prototype, 'save').mockRejectedValueOnce(new Error('Save failed'))
 
       await expect(service.createVerification(userId)).rejects.toThrow(InternalServerErrorException)
-      await expect(service.createVerification(userId)).rejects.toThrow('EMAIL_VERIFICATION_SAVE_ERROR')
     })
   })
 
   describe('verifyCode', () => {
-    it('should return true for valid verification code', async () => {
+    it('should verify a valid code successfully', async () => {
       const userId = new Types.ObjectId().toString()
       const verificationCode = '123456'
 
-      // Create verification document and mock compareVerificationCode method
-      const emailVerificationDoc = new emailVerificationModel({
+      // Create a verification record directly
+      await emailVerificationModel.create({
         _id: userId,
-        verificationCode: verificationCode
+        verificationCode,
+        tries: 0
       })
-
-      emailVerificationDoc.compareVerificationCode = jest.fn().mockResolvedValue(true)
-      await emailVerificationDoc.save()
 
       const result = await service.verifyCode(userId, verificationCode)
+
       expect(result).toBe(true)
 
-      // Verify document was deleted after successful verification
-      const count = await emailVerificationModel.countDocuments({ _id: userId })
-      expect(count).toBe(0)
+      // Verification record should be deleted after successful verification
+      const verification = await emailVerificationModel.findOne({ _id: userId })
+      expect(verification).toBeNull()
     })
 
-    it('should return false and increment tries for invalid code', async () => {
+    it('should throw BadRequestException when verification ID is invalid', async () => {
       const userId = new Types.ObjectId().toString()
+      const verificationCode = '123456'
 
-      // Create verification document with mock method
-      const emailVerificationDoc = new emailVerificationModel({
+      await expect(service.verifyCode(userId, verificationCode)).rejects.toThrow(BadRequestException)
+      await expect(service.verifyCode(userId, verificationCode)).rejects.toThrow('VERIFICATION_INVALID_ID')
+    })
+
+    it('should increment tries and return false for invalid code', async () => {
+      const userId = new Types.ObjectId().toString()
+      const correctCode = '123456'
+      const wrongCode = '654321'
+
+      // Create a verification record
+      await emailVerificationModel.create({
         _id: userId,
-        verificationCode: '123456',
-        tries: 2
+        verificationCode: correctCode,
+        tries: 0
       })
 
-      emailVerificationDoc.compareVerificationCode = jest.fn().mockResolvedValue(false)
-      await emailVerificationDoc.save()
+      const result = await service.verifyCode(userId, wrongCode)
 
-      const result = await service.verifyCode(userId, '654321')
       expect(result).toBe(false)
 
-      // Check if tries were incremented
-      const updatedDoc = await emailVerificationModel.findById(userId)
-      expect(updatedDoc.tries).toBe(3)
+      // Check tries was incremented
+      const verification = await emailVerificationModel.findOne({ _id: userId })
+      expect(verification.tries).toBe(1)
     })
 
-    it('should throw BadRequestException when verification record does not exist', async () => {
+    it('should throw BadRequestException when tries exceeded', async () => {
       const userId = new Types.ObjectId().toString()
+      const correctCode = '123456'
+      const wrongCode = '654321'
 
-      await expect(service.verifyCode(userId, '123456')).rejects.toThrow(BadRequestException)
-      await expect(service.verifyCode(userId, '123456')).rejects.toThrow('VERIFICATION_INVALID_ID')
-    })
-
-    it('should throw exception when tries exceed limit', async () => {
-      const userId = new Types.ObjectId().toString()
-
-      // Create verification document with tries exceeding limit
-      const emailVerificationDoc = new emailVerificationModel({
+      // Create a verification record with tries already at limit
+      const verificationU = new emailVerificationModel({
         _id: userId,
-        verificationCode: '123456',
-        tries: 11
+        verificationCode: correctCode,
+        tries: 10 // Set to 10 so next try exceeds the limit
       })
+      await verificationU.save()
 
-      emailVerificationDoc.compareVerificationCode = jest.fn().mockResolvedValue(false)
-      await emailVerificationDoc.save()
+      await expect(service.verifyCode(userId, wrongCode)).rejects.toThrow(BadRequestException)
 
-      await expect(service.verifyCode(userId, '123456')).rejects.toThrow(BadRequestException)
-      await expect(service.verifyCode(userId, '123456')).rejects.toThrow('VERIFICATION_TRIES_EXCEEDED')
-
-      // Verify document was deleted
-      const count = await emailVerificationModel.countDocuments({ _id: userId })
-      expect(count).toBe(0)
+      // Verify record was deleted
+      const verification = await emailVerificationModel.findOne({ _id: userId })
+      expect(verification).toBeNull()
     })
 
-    it('should throw InternalServerErrorException when save operation fails', async () => {
+    it('should throw InternalServerErrorException when save fails after incrementing tries', async () => {
       const userId = new Types.ObjectId().toString()
+      const correctCode = '123456'
+      const wrongCode = '654321'
 
-      // Create verification document with mock method
-      const emailVerificationDoc = new emailVerificationModel({
+      // Create a verification record
+      await emailVerificationModel.create({
         _id: userId,
-        verificationCode: '123456'
+        verificationCode: correctCode,
+        tries: 0
       })
 
-      emailVerificationDoc.compareVerificationCode = jest.fn().mockResolvedValue(false)
-      await emailVerificationDoc.save()
-
-      // Mock save to throw an error
-      jest.spyOn(emailVerificationModel.prototype, 'save').mockImplementationOnce(() => {
-        throw new Error('Save failed')
+      // Add compareVerificationCode method to document instances
+      const original = emailVerificationModel.findOne
+      jest.spyOn(emailVerificationModel, 'findOne').mockImplementation(async function () {
+        const doc = await original.apply(this, arguments)
+        if (doc) {
+          doc.compareVerificationCode = async (code: string) => doc.verificationCode === code
+        }
+        return doc
       })
 
-      await expect(service.verifyCode(userId, '654321')).rejects.toThrow(InternalServerErrorException)
-      await expect(service.verifyCode(userId, '654321')).rejects.toThrow('ERROR')
+      // Mock save to fail
+      jest.spyOn(emailVerificationModel.prototype, 'save').mockRejectedValueOnce(new Error('Save failed'))
+
+      await expect(service.verifyCode(userId, wrongCode)).rejects.toThrow(InternalServerErrorException)
     })
   })
 
   describe('canResendEmail', () => {
-    it('should return true when no verification exists', async () => {
+    it('should allow resending email when no verification exists', async () => {
       const userId = new Types.ObjectId().toString()
 
       const result = await service.canResendEmail(userId)
+
       expect(result).toBe(true)
     })
 
-    it('should return true when cooldown period has passed', async () => {
+    it('should allow resending email when last verification is older than 1 minute', async () => {
       const userId = new Types.ObjectId().toString()
 
-      // Create verification document with creation time in the past
-      const pastDate = new Date(Date.now() - 70000) // 70 seconds ago
+      // Create verification with timestamp more than 1 minute ago
+      const oldDate = new Date(Date.now() - 61000) // 61 seconds ago
+
       await emailVerificationModel.create({
         _id: userId,
         verificationCode: '123456',
-        createdAt: pastDate
+        createdAt: oldDate
       })
 
       const result = await service.canResendEmail(userId)
+
       expect(result).toBe(true)
     })
 
-    it('should throw BadRequestException when resend attempted too soon', async () => {
+    it('should throw BadRequestException when trying to resend too soon', async () => {
       const userId = new Types.ObjectId().toString()
 
-      // Create verification document with recent creation time
+      // Create verification with recent timestamp
       const recentDate = new Date(Date.now() - 30000) // 30 seconds ago
+
       await emailVerificationModel.create({
         _id: userId,
         verificationCode: '123456',

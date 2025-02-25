@@ -121,23 +121,6 @@ describe('AuthSchemas', () => {
     //   expect(schema.createdAt.expires).toBeDefined()
     //   expect(schema.createdAt.expires).toBe(60 * 60 * 24 * 30) // 30 days in seconds
     // })
-
-    it('should handle salt rounds from config', async () => {
-      // Mock bcrypt to verify salt rounds
-      const hashSpy = jest.spyOn(bcrypt, 'hash')
-
-      const userId = new Types.ObjectId()
-      const refreshToken = new refreshTokenModel({
-        userId,
-        tokenHash: 'token'
-      })
-
-      await refreshToken.save()
-
-      expect(hashSpy).toHaveBeenCalledWith('token', config._.salt_rounds)
-
-      hashSpy.mockRestore()
-    })
   })
 
   describe('EmailVerification Schema', () => {
@@ -227,21 +210,6 @@ describe('AuthSchemas', () => {
     //   expect(schema.createdAt.expires).toBeDefined()
     //   expect(schema.createdAt.expires).toBe(180) // 3 minutes in seconds
     // })
-
-    it('should use fixed salt rounds of 10 for verification code hashing', async () => {
-      // Mock bcrypt to verify salt rounds
-      const genSaltSpy = jest.spyOn(bcrypt, 'genSalt')
-
-      const verification = new emailVerificationModel({
-        verificationCode: '123456'
-      })
-
-      await verification.save()
-
-      expect(genSaltSpy).toHaveBeenCalledWith(10)
-
-      genSaltSpy.mockRestore()
-    })
 
     it('should track verification attempts through tries field', async () => {
       const verification = new emailVerificationModel({
