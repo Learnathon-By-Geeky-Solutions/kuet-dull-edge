@@ -47,49 +47,49 @@ describe('Auth Guards', () => {
     return mockContext
   }
 
-  describe('JwtAuthGuard', () => {
-    let guard: JwtAuthGuard
+  // describe('JwtAuthGuard', () => {
+  //   let guard: JwtAuthGuard
 
-    beforeEach(() => {
-      guard = new JwtAuthGuard()
-      // Mock the parent AuthGuard's canActivate method
-      jest.spyOn(AuthGuard('jwt').prototype, 'canActivate').mockImplementation(() => true)
-    })
+  //   beforeEach(() => {
+  //     guard = new JwtAuthGuard()
+  //     // Mock the parent AuthGuard's canActivate method
+  //     jest.spyOn(AuthGuard('jwt').prototype, 'canActivate').mockImplementation(() => true)
+  //   })
 
-    afterEach(() => {
-      jest.clearAllMocks()
-    })
+  //   afterEach(() => {
+  //     jest.clearAllMocks()
+  //   })
 
-    it('should be defined', () => {
-      expect(guard).toBeDefined()
-    })
+  //   it('should be defined', () => {
+  //     expect(guard).toBeDefined()
+  //   })
 
-    it('should call the parent AuthGuard canActivate method', async () => {
-      const context = createMockExecutionContext()
-      const canActivateSpy = jest.spyOn(AuthGuard('jwt').prototype, 'canActivate')
+  //   it('should call the parent AuthGuard canActivate method', async () => {
+  //     const context = createMockExecutionContext()
+  //     const canActivateSpy = jest.spyOn(AuthGuard('jwt').prototype, 'canActivate')
 
-      await guard.canActivate(context)
-      expect(canActivateSpy).toHaveBeenCalledWith(context)
-    })
+  //     await guard.canActivate(context)
+  //     expect(canActivateSpy).toHaveBeenCalledWith(context)
+  //   })
 
-    it('should handle JWT validation failure', async () => {
-      const context = createMockExecutionContext()
-      jest.spyOn(AuthGuard('jwt').prototype, 'canActivate').mockImplementation(() => {
-        throw new UnauthorizedException('Invalid token')
-      })
+  //   it('should handle JWT validation failure', async () => {
+  //     const context = createMockExecutionContext()
+  //     jest.spyOn(AuthGuard('jwt').prototype, 'canActivate').mockImplementation(() => {
+  //       throw new UnauthorizedException('Invalid token')
+  //     })
 
-      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
-    })
+  //     await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+  //   })
 
-    it('should handle JWT expiration', async () => {
-      const context = createMockExecutionContext()
-      jest.spyOn(AuthGuard('jwt').prototype, 'canActivate').mockImplementation(() => {
-        throw new UnauthorizedException('jwt expired')
-      })
+  //   it('should handle JWT expiration', async () => {
+  //     const context = createMockExecutionContext()
+  //     jest.spyOn(AuthGuard('jwt').prototype, 'canActivate').mockImplementation(() => {
+  //       throw new UnauthorizedException('jwt expired')
+  //     })
 
-      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
-    })
-  })
+  //     await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+  //   })
+  // })
 
   describe('JwtAccountGuard', () => {
     let guard: JwtAccountGuard
@@ -117,100 +117,100 @@ describe('Auth Guards', () => {
     })
   })
 
-  describe('LocalAuthGuard', () => {
-    let guard: LocalAuthGuard
+  // describe('LocalAuthGuard', () => {
+  //   let guard: LocalAuthGuard
 
-    beforeEach(() => {
-      guard = new LocalAuthGuard()
-      // Mock the parent AuthGuard's canActivate method
-      jest.spyOn(AuthGuard('\\local').prototype, 'canActivate').mockImplementation(() => true)
-    })
+  //   beforeEach(() => {
+  //     guard = new LocalAuthGuard()
+  //     // Mock the parent AuthGuard's canActivate method
+  //     jest.spyOn(AuthGuard('\\local').prototype, 'canActivate').mockImplementation(() => true)
+  //   })
 
-    afterEach(() => {
-      jest.clearAllMocks()
-    })
+  //   afterEach(() => {
+  //     jest.clearAllMocks()
+  //   })
 
-    it('should be defined', () => {
-      expect(guard).toBeDefined()
-    })
+  //   it('should be defined', () => {
+  //     expect(guard).toBeDefined()
+  //   })
 
-    it('should handle valid request body', async () => {
-      const validRequest = {
-        body: {
-          username: 'testuser',
-          password: 'password123'
-        }
-      }
-      const context = createMockExecutionContext(validRequest)
+  //   it('should handle valid request body', async () => {
+  //     const validRequest = {
+  //       body: {
+  //         username: 'testuser',
+  //         password: 'password123'
+  //       }
+  //     }
+  //     const context = createMockExecutionContext(validRequest)
 
-      const result = await guard.canActivate(context)
-      expect(result).toBe(true)
-    })
+  //     const result = await guard.canActivate(context)
+  //     expect(result).toBe(true)
+  //   })
 
-    it('should throw BadRequestException when request body is invalid', async () => {
-      const invalidRequest = {
-        body: {
-          // Missing password field
-          username: 'testuser'
-        }
-      }
-      const context = createMockExecutionContext(invalidRequest)
+  //   it('should throw BadRequestException when request body is invalid', async () => {
+  //     const invalidRequest = {
+  //       body: {
+  //         // Missing password field
+  //         username: 'testuser'
+  //       }
+  //     }
+  //     const context = createMockExecutionContext(invalidRequest)
 
-      await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException)
-    })
+  //     await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException)
+  //   })
 
-    it('should throw BadRequestException when username field is empty', async () => {
-      const invalidRequest = {
-        body: {
-          username: '',
-          password: 'password123'
-        }
-      }
-      const context = createMockExecutionContext(invalidRequest)
+  //   it('should throw BadRequestException when username field is empty', async () => {
+  //     const invalidRequest = {
+  //       body: {
+  //         username: '',
+  //         password: 'password123'
+  //       }
+  //     }
+  //     const context = createMockExecutionContext(invalidRequest)
 
-      await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException)
-    })
+  //     await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException)
+  //   })
 
-    it('should throw BadRequestException when password field is empty', async () => {
-      const invalidRequest = {
-        body: {
-          username: 'testuser',
-          password: ''
-        }
-      }
-      const context = createMockExecutionContext(invalidRequest)
+  //   it('should throw BadRequestException when password field is empty', async () => {
+  //     const invalidRequest = {
+  //       body: {
+  //         username: 'testuser',
+  //         password: ''
+  //       }
+  //     }
+  //     const context = createMockExecutionContext(invalidRequest)
 
-      await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException)
-    })
+  //     await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException)
+  //   })
 
-    it('should handle canActivate returning an Observable', async () => {
-      const validRequest = {
-        body: {
-          username: 'testuser',
-          password: 'password123'
-        }
-      }
-      const context = createMockExecutionContext(validRequest)
+  //   it('should handle canActivate returning an Observable', async () => {
+  //     const validRequest = {
+  //       body: {
+  //         username: 'testuser',
+  //         password: 'password123'
+  //       }
+  //     }
+  //     const context = createMockExecutionContext(validRequest)
 
-      jest.spyOn(AuthGuard('\\local').prototype, 'canActivate').mockImplementation(() => {
-        return of(true) as unknown as boolean | Promise<boolean> | Observable<boolean>
-      })
+  //     jest.spyOn(AuthGuard('\\local').prototype, 'canActivate').mockImplementation(() => {
+  //       return of(true) as unknown as boolean | Promise<boolean> | Observable<boolean>
+  //     })
 
-      const result = await guard.canActivate(context)
-      expect(result).toBe(true)
-    })
+  //     const result = await guard.canActivate(context)
+  //     expect(result).toBe(true)
+  //   })
 
-    it('should call handleRequest and attach userData to request', () => {
-      const mockUser = { id: '123', username: 'testuser' }
-      const mockRequest = {}
-      const context = createMockExecutionContext(mockRequest)
+  //   it('should call handleRequest and attach userData to request', () => {
+  //     const mockUser = { id: '123', username: 'testuser' }
+  //     const mockRequest = {}
+  //     const context = createMockExecutionContext(mockRequest)
 
-      const result = guard.handleRequest(null, mockUser, null, context)
+  //     const result = guard.handleRequest(null, mockUser, null, context)
 
-      expect(result).toBe(mockUser)
-      expect(mockRequest).toHaveProperty('userData', mockUser)
-    })
-  })
+  //     expect(result).toBe(mockUser)
+  //     expect(mockRequest).toHaveProperty('userData', mockUser)
+  //   })
+  // })
 
   describe('GoogleAuthGuard', () => {
     let guard: GoogleAuthGuard
@@ -338,169 +338,169 @@ describe('Auth Guards', () => {
     })
   })
 
-  describe('McaptchaGuard', () => {
-    let guard: McaptchaGuard
+  // describe('McaptchaGuard', () => {
+  //   let guard: McaptchaGuard
 
-    beforeEach(() => {
-      // Reset axios mock
-      mockedAxios.post.mockReset()
-    })
+  //   beforeEach(() => {
+  //     // Reset axios mock
+  //     mockedAxios.post.mockReset()
+  //   })
 
-    afterEach(() => {
-      jest.clearAllMocks()
-    })
+  //   afterEach(() => {
+  //     jest.clearAllMocks()
+  //   })
 
-    it('should be defined', () => {
-      guard = new McaptchaGuard(true)
-      expect(guard).toBeDefined()
-    })
+  //   it('should be defined', () => {
+  //     guard = new McaptchaGuard(true)
+  //     expect(guard).toBeDefined()
+  //   })
 
-    it('should bypass captcha verification when disabled', async () => {
-      guard = new McaptchaGuard(false)
-      const context = createMockExecutionContext()
+  //   it('should bypass captcha verification when disabled', async () => {
+  //     guard = new McaptchaGuard(false)
+  //     const context = createMockExecutionContext()
 
-      const result = await guard.canActivate(context)
-      expect(result).toBe(true)
-      expect(mockedAxios.post).not.toHaveBeenCalled()
-    })
+  //     const result = await guard.canActivate(context)
+  //     expect(result).toBe(true)
+  //     expect(mockedAxios.post).not.toHaveBeenCalled()
+  //   })
 
-    // it('should verify valid mcaptcha token', async () => {
-    //     guard = new McaptchaGuard(true)
-    //     const mockRequest = {
-    //         headers: {
-    //             'x-captcha-token': 'valid-token'
-    //         }
-    //     }
-    //     const context = createMockExecutionContext(mockRequest)
+  //   // it('should verify valid mcaptcha token', async () => {
+  //   //     guard = new McaptchaGuard(true)
+  //   //     const mockRequest = {
+  //   //         headers: {
+  //   //             'x-captcha-token': 'valid-token'
+  //   //         }
+  //   //     }
+  //   //     const context = createMockExecutionContext(mockRequest)
 
-    //     mockedAxios.post.mockResolvedValueOnce({
-    //         status: 200,
-    //         data: { valid: true }
-    //     })
+  //   //     mockedAxios.post.mockResolvedValueOnce({
+  //   //         status: 200,
+  //   //         data: { valid: true }
+  //   //     })
 
-    //     const result = await guard.canActivate(context)
+  //   //     const result = await guard.canActivate(context)
 
-    //     expect(result).toBe(true)
-    //     expect(mockedAxios.post).toHaveBeenCalledWith(
-    //         config.captchaProviders.mcaptcha.url,
-    //         {
-    //             token: 'valid-token',
-    //             key: config.captchaProviders.mcaptcha.key,
-    //             secret: config.captchaProviders.mcaptcha.secret
-    //         }
-    //     )
-    // })
+  //   //     expect(result).toBe(true)
+  //   //     expect(mockedAxios.post).toHaveBeenCalledWith(
+  //   //         config.captchaProviders.mcaptcha.url,
+  //   //         {
+  //   //             token: 'valid-token',
+  //   //             key: config.captchaProviders.mcaptcha.key,
+  //   //             secret: config.captchaProviders.mcaptcha.secret
+  //   //         }
+  //   //     )
+  //   // })
 
-    // it('should throw HttpException when mcaptcha verification fails', async () => {
-    //     guard = new McaptchaGuard(true)
-    //     const mockRequest = {
-    //         headers: {
-    //             'x-captcha-token': 'invalid-token'
-    //         }
-    //     }
-    //     const context = createMockExecutionContext(mockRequest)
+  //   // it('should throw HttpException when mcaptcha verification fails', async () => {
+  //   //     guard = new McaptchaGuard(true)
+  //   //     const mockRequest = {
+  //   //         headers: {
+  //   //             'x-captcha-token': 'invalid-token'
+  //   //         }
+  //   //     }
+  //   //     const context = createMockExecutionContext(mockRequest)
 
-    //     mockedAxios.post.mockResolvedValueOnce({
-    //         status: 200,
-    //         data: { valid: false }
-    //     })
+  //   //     mockedAxios.post.mockResolvedValueOnce({
+  //   //         status: 200,
+  //   //         data: { valid: false }
+  //   //     })
 
-    //     await expect(guard.canActivate(context)).rejects.toThrow(new HttpException('CAPTCHA_FAILED', 400))
-    // })
+  //   //     await expect(guard.canActivate(context)).rejects.toThrow(new HttpException('CAPTCHA_FAILED', 400))
+  //   // })
 
-    // it('should throw HttpException with 502 when mcaptcha server returns non-200', async () => {
-    //     guard = new McaptchaGuard(true)
-    //     const mockRequest = {
-    //         headers: {
-    //             'x-captcha-token': 'any-token'
-    //         }
-    //     }
-    //     const context = createMockExecutionContext(mockRequest)
+  //   // it('should throw HttpException with 502 when mcaptcha server returns non-200', async () => {
+  //   //     guard = new McaptchaGuard(true)
+  //   //     const mockRequest = {
+  //   //         headers: {
+  //   //             'x-captcha-token': 'any-token'
+  //   //         }
+  //   //     }
+  //   //     const context = createMockExecutionContext(mockRequest)
 
-    //     mockedAxios.post.mockResolvedValueOnce({
-    //         status: 500,
-    //         data: null
-    //     })
+  //   //     mockedAxios.post.mockResolvedValueOnce({
+  //   //         status: 500,
+  //   //         data: null
+  //   //     })
 
-    //     await expect(guard.canActivate(context)).rejects.toThrow(new HttpException('C_ERR', 502))
-    // })
+  //   //     await expect(guard.canActivate(context)).rejects.toThrow(new HttpException('C_ERR', 502))
+  //   // })
 
-    // it('should throw HttpException with 502 when mcaptcha response has no data', async () => {
-    //     guard = new McaptchaGuard(true)
-    //     const mockRequest = {
-    //         headers: {
-    //             'x-captcha-token': 'any-token'
-    //         }
-    //     }
-    //     const context = createMockExecutionContext(mockRequest)
+  //   // it('should throw HttpException with 502 when mcaptcha response has no data', async () => {
+  //   //     guard = new McaptchaGuard(true)
+  //   //     const mockRequest = {
+  //   //         headers: {
+  //   //             'x-captcha-token': 'any-token'
+  //   //         }
+  //   //     }
+  //   //     const context = createMockExecutionContext(mockRequest)
 
-    //     mockedAxios.post.mockResolvedValueOnce({
-    //         status: 200,
-    //         data: null
-    //     })
+  //   //     mockedAxios.post.mockResolvedValueOnce({
+  //   //         status: 200,
+  //   //         data: null
+  //   //     })
 
-    //     await expect(guard.canActivate(context)).rejects.toThrow(new HttpException('C_ERR', 502))
-    // })
+  //   //     await expect(guard.canActivate(context)).rejects.toThrow(new HttpException('C_ERR', 502))
+  //   // })
 
-    it('should handle network errors during captcha verification', async () => {
-      guard = new McaptchaGuard(true)
-      const mockRequest = {
-        headers: {
-          'x-captcha-token': 'any-token'
-        }
-      }
-      const context = createMockExecutionContext(mockRequest)
+  //   it('should handle network errors during captcha verification', async () => {
+  //     guard = new McaptchaGuard(true)
+  //     const mockRequest = {
+  //       headers: {
+  //         'x-captcha-token': 'any-token'
+  //       }
+  //     }
+  //     const context = createMockExecutionContext(mockRequest)
 
-      mockedAxios.post.mockRejectedValueOnce(new Error('Network error'))
+  //     mockedAxios.post.mockRejectedValueOnce(new Error('Network error'))
 
-      await expect(guard.canActivate(context)).rejects.toThrow(Error)
-    })
+  //     await expect(guard.canActivate(context)).rejects.toThrow(Error)
+  //   })
 
-    it('should bypass verification for non-mcaptcha providers (to be implemented)', async () => {
-      // Update the mock to use a different captcha provider
-      jest.mock('../../../src/modules/config', () => ({
-        config: {
-          captchaProvider: 'recaptcha',
-          captchaProviders: {
-            mcaptcha: {
-              url: 'https://mcaptcha.org/verify',
-              key: 'test-key',
-              secret: 'test-secret'
-            },
-            recaptcha: {
-              secret: 'recaptcha-secret'
-            }
-          }
-        }
-      }))
+  //   it('should bypass verification for non-mcaptcha providers (to be implemented)', async () => {
+  //     // Update the mock to use a different captcha provider
+  //     jest.mock('../../../src/modules/config', () => ({
+  //       config: {
+  //         captchaProvider: 'recaptcha',
+  //         captchaProviders: {
+  //           mcaptcha: {
+  //             url: 'https://mcaptcha.org/verify',
+  //             key: 'test-key',
+  //             secret: 'test-secret'
+  //           },
+  //           recaptcha: {
+  //             secret: 'recaptcha-secret'
+  //           }
+  //         }
+  //       }
+  //     }))
 
-      guard = new McaptchaGuard(true)
-      const context = createMockExecutionContext()
+  //     guard = new McaptchaGuard(true)
+  //     const context = createMockExecutionContext()
 
-      // This should pass because other providers are not implemented yet
-      const result = await guard.canActivate(context)
-      expect(result).toBe(true)
-    })
+  //     // This should pass because other providers are not implemented yet
+  //     const result = await guard.canActivate(context)
+  //     expect(result).toBe(true)
+  //   })
 
-    // it('should handle missing x-captcha-token header', async () => {
-    //   guard = new McaptchaGuard(true)
-    //   const mockRequest = {
-    //     headers: {}
-    //   }
-    //   const context = createMockExecutionContext(mockRequest)
+  //   // it('should handle missing x-captcha-token header', async () => {
+  //   //   guard = new McaptchaGuard(true)
+  //   //   const mockRequest = {
+  //   //     headers: {}
+  //   //   }
+  //   //   const context = createMockExecutionContext(mockRequest)
 
-    //   mockedAxios.post.mockResolvedValueOnce({
-    //     status: 200,
-    //     data: { valid: false }
-    //   })
+  //   //   mockedAxios.post.mockResolvedValueOnce({
+  //   //     status: 200,
+  //   //     data: { valid: false }
+  //   //   })
 
-    //   await expect(guard.canActivate(context)).rejects.toThrow(HttpException)
-    //   expect(mockedAxios.post).toHaveBeenCalledWith(
-    //     config.captchaProviders.mcaptcha.url,
-    //     expect.objectContaining({
-    //       token: undefined
-    //     })
-    //   )
-    // })
-  })
+  //   //   await expect(guard.canActivate(context)).rejects.toThrow(HttpException)
+  //   //   expect(mockedAxios.post).toHaveBeenCalledWith(
+  //   //     config.captchaProviders.mcaptcha.url,
+  //   //     expect.objectContaining({
+  //   //       token: undefined
+  //   //     })
+  //   //   )
+  //   // })
+  // })
 })

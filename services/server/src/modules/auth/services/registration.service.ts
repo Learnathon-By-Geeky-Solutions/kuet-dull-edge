@@ -23,6 +23,7 @@ export class RegistrationService {
   ) {}
 
   async registerLocal({ username, password, email }: RegisterDto): Promise<{ token: string }> {
+    const useraAuth = await this.userAuthService.findByEmailOrUsername(email, username)
     if (await this.userAuthService.findByEmailOrUsername(email, username)) throw new ConflictException('USER_EXISTS')
 
     let userAuth

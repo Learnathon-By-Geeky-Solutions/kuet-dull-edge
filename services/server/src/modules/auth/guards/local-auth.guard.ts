@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ExecutionContext,
-  Injectable
-} from '@nestjs/common'
+import { BadRequestException, ExecutionContext, Injectable } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { plainToClass } from 'class-transformer'
 import { validate } from 'class-validator'
@@ -15,13 +11,7 @@ export class LocalAuthGuard extends AuthGuard('\local') {
     super()
   }
 
-  handleRequest<TUser = any>(
-    err: any,
-    user: any,
-    info: any,
-    context: ExecutionContext,
-    status?: any
-  ): TUser {
+  handleRequest<TUser = any>(err: any, user: any, info: any, context: ExecutionContext, status?: any): TUser {
     const req = context.switchToHttp().getRequest()
     req.userData = user
     return user
@@ -31,11 +21,8 @@ export class LocalAuthGuard extends AuthGuard('\local') {
     const request = context.switchToHttp().getRequest<Request>()
     const body = plainToClass(LoginDto, request.body)
     const errors = await validate(body)
-    const errorMessages = errors.flatMap(({ constraints }) =>
-      Object.values(constraints)
-    )
-    if (errorMessages.length > 0)
-      throw new BadRequestException('INVALID_REQUEST')
+    const errorMessages = errors.flatMap(({ constraints }) => Object.values(constraints))
+    if (errorMessages.length > 0) throw new BadRequestException('INVALID_REQUEST')
 
     const result = super.canActivate(context)
     if (typeof result === 'boolean') return result

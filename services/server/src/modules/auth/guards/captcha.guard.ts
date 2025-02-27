@@ -1,9 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  HttpException,
-  Injectable
-} from '@nestjs/common'
+import { CanActivate, ExecutionContext, HttpException, Injectable } from '@nestjs/common'
 import axios from 'axios'
 import { config } from '../../config'
 
@@ -23,10 +18,7 @@ export class McaptchaGuard implements CanActivate {
         key: config.captchaProviders[captchaProvider].key,
         secret: config.captchaProviders[captchaProvider].secret
       }
-      const response = await axios.post(
-        config.captchaProviders[captchaProvider].url,
-        payload
-      )
+      const response = await axios.post(config.captchaProviders[captchaProvider].url, payload)
       if (response.status !== 200) throw new HttpException('C_ERR', 502)
       if (!response.data) throw new HttpException('C_ERR', 502)
       const result = response.data['valid']
