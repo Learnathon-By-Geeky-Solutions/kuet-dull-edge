@@ -3,7 +3,6 @@ import { PassportModule } from '@nestjs/passport'
 import { AuthService } from './auth.service'
 import { UsersModule } from '../users/users.module'
 import { AuthController } from './auth.controller'
-import { RegistrationService } from './services/registration.service'
 import { JwtStrategy } from './strategies/jwt.strategy'
 import { JwtModule } from '@nestjs/jwt'
 import { EmailVerificationSchema } from './repository/email-verification.schema'
@@ -12,9 +11,8 @@ import { config } from '../config'
 import { GoogleStrategy } from './strategies/google.strategy'
 import { GitHubStrategy } from './strategies/github.strategy'
 import { LocalStrategy } from './strategies/local.strategy'
-import { RefreshTokenService } from './services/refreshToken.service'
 import { RefreshTokenSchema } from './repository/refreshToken.schema'
-import { EmailVerificationService } from './services/emailVerification.service'
+import { EmailVerificationRepository, RefreshTokenRepository } from './repository/auth.repository'
 
 @Module({
   imports: [
@@ -32,14 +30,12 @@ import { EmailVerificationService } from './services/emailVerification.service'
   ],
   providers: [
     AuthService,
-    RegistrationService,
-    RefreshTokenService,
     JwtStrategy,
     GoogleStrategy,
     GitHubStrategy,
     LocalStrategy,
-    EmailVerificationService,
-    RefreshTokenService
+    EmailVerificationRepository,
+    RefreshTokenRepository
   ],
   controllers: [AuthController],
   exports: [JwtModule]

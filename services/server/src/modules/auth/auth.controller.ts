@@ -12,7 +12,6 @@ import {
   Version,
   VERSION_NEUTRAL
 } from '@nestjs/common'
-import { RegistrationService } from './services/registration.service'
 import { AuthService } from './auth.service'
 import { RegisterDto } from './dto/register.dto'
 import { EmailVerifyDto } from './dto/email-verify.dto'
@@ -41,10 +40,7 @@ import { LoginDto } from './dto/login.dto'
 @ApiTags('Authentication')
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly registrationService: RegistrationService
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get anonymous user token' })
@@ -172,7 +168,7 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   async register(@Body() body: RegisterDto, @Request() req: any) {
     if (req.user.accountStatus !== AccountStatus.ANONYMOUS) throw new UnauthorizedException()
-    return await this.registrationService.registerLocal(body)
+    return await this.authService.registerLocal(body)
   }
 
   @ApiOperation({ summary: 'Verify email with verification code' })
@@ -198,7 +194,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async verifyEmail(@Body() emailVerifyDto: EmailVerifyDto, @Request() req: any) {
     if (req.user.accountStatus !== AccountStatus.EMAIL_VERIFICATION) throw new UnauthorizedException()
-    return this.registrationService.verifyEmail(req.user._id, emailVerifyDto.verificationCode)
+    return this.authService.verifyEmail(req.user._id, emailVerifyDto.verificationCode)
   }
 
   @ApiOperation({ summary: 'Resend email verification' })
@@ -217,7 +213,7 @@ export class AuthController {
   @UsePipes(EmptyBodyValidationPipe)
   @UseGuards(JwtAuthGuard)
   async resendEmail(@Body() body: undefined, @Request() req: any) {
-    return this.registrationService.resendVerificationEmail(req.user.id)
+    return this.authService.resendVerificationEmail(req.user.id)
   }
 
   @ApiOperation({ summary: 'Complete user onboarding' })
@@ -233,7 +229,7 @@ export class AuthController {
   @Post('onboarding')
   @UseGuards(JwtAuthGuard)
   async onboarding(@Body() onboardingDto: OnboardingDto, @Request() req: any) {
-    return this.registrationService.registerOnboarding(req.user._id, onboardingDto)
+    return this.authService.registerOnboarding(req.user._id, onboardingDto)
   }
 
   @ApiOperation({ summary: 'Complete OAuth user onboarding' })
@@ -250,7 +246,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async onboardingOauth(@Body() body: OAuthOnboardingDto, @Request() req: any) {
     if (req.user.accountStatus !== AccountStatus.ONBOARDING_OAUTH) throw new UnauthorizedException()
-    return this.registrationService.registerOnboardingOauth(body, req.user.data)
+    return this.authService.registerOnboardingOauth(body, req.user.data)
   }
 
   @ApiOperation({ summary: 'Refresh authentication token' })
