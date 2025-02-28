@@ -8,7 +8,8 @@ import cookieParser from 'cookie-parser'
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule)
   app.enableVersioning({
-    type: VersioningType.URI
+    type: VersioningType.HEADER,
+    header: 'X-API-Version'
   })
   app.use(cookieParser())
   const swaggerConfig = new DocumentBuilder()

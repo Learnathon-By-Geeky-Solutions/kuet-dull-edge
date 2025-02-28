@@ -1,64 +1,37 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
 import * as bcrypt from 'bcrypt'
-import { config } from '../../config'
-
-export enum AccountStatus {
-  ANONYMOUS = 'anonymous',
-  ACTIVE = 'active',
-  EMAIL_VERIFICATION = 'email_verification',
-  MANUAL_VERIFICATION = 'manual_verification',
-  ONBOARDING = 'onboarding',
-  ONBOARDING_OAUTH = 'onboarding_oauth',
-  PASSWORD_RESET = 'password_reset',
-  TEMP_BAN = 'tempban',
-  BANNED = 'banned'
-}
-
+import { IUserAuth, AccountStatus } from '../../../interfaces/users.interfaces'
 @Schema({ timestamps: true })
-export class UserAuth extends Document {
+export class UserAuth extends Document implements IUserAuth {
+  @Prop({ required: true, type: Types.ObjectId })
   _id: Types.ObjectId
-  @Prop({ required: true, unique: true, index: true })
+
+  @Prop({ required: true, unique: true })
   email: string
 
-  @Prop({ required: true, unique: true, index: true, immutable: true })
+  @Prop({ required: true, unique: true })
   username: string
 
-  @Prop({ required: true, select: false })
+  @Prop({ required: true })
   password: string
 
-  @Prop({ type: String, required: false })
-  refreshToken: string
-
-  comparePassword: (candidatePassword: string) => Promise<boolean>
-  /*
-     * Shared userid will be used to link all the user related data,
-    @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'UserMFA' })
-    mfa: MongooseSchema.Types.ObjectId;
-    */
-
-  @Prop({ type: String, enum: AccountStatus, default: AccountStatus.ACTIVE })
+  @Prop({ required: true, enum: AccountStatus, default: AccountStatus.EMAIL_VERIFICATION })
   accountStatus: AccountStatus
+
+  comparePassword: (password: string) => Promise<boolean>
 }
 
 export const UserAuthSchema = SchemaFactory.createForClass(UserAuth)
-// Pre-save hook to hash the password
+
 UserAuthSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
-    return next()
+  if (this.isModified('password')) {
+    const salt = await bcrypt.genSalt(10)
+    this.password = await bcrypt.hash(this.password, salt)
   }
-  try {
-    const saltRounds = config._.salt_rounds
-    this.password = await bcrypt.hash(this.password, saltRounds)
-    next()
-  } catch (err) {
-    next(err)
-  }
+  next()
 })
 
-// Method to compare passwords
-UserAuthSchema.methods.comparePassword = async function (
-  candidatePassword: string
-): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password)
+UserAuthSchema.methods.comparePassword = async function (password: string): Promise<boolean> {
+  return await bcrypt.compare(password, this.password)
 }

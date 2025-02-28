@@ -1,12 +1,7 @@
-import {
-  IsISO8601,
-  IsNotEmpty,
-  IsString,
-  MaxLength,
-  MinLength
-} from 'class-validator'
+import { IsISO8601, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator'
+import { IOnboardingDto } from '../../../interfaces/auth.interfaces'
 
-export class OnboardingDto {
+export class OnboardingDto implements IOnboardingDto {
   @IsNotEmpty()
   @IsString()
   @MinLength(2)

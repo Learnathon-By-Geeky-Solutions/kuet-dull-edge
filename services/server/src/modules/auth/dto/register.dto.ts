@@ -1,7 +1,8 @@
 import { IsEmail, IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
+import { IRegisterDto } from '../../../interfaces/auth.interfaces'
 
-export class RegisterDto {
+export class RegisterDto implements IRegisterDto {
   @ApiProperty({
     description: 'Username of the user',
     minLength: 3,

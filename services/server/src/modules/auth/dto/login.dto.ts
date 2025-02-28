@@ -1,7 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { ApiProperty } from '@nestjs/swagger'
 import { IsNotEmpty, IsString } from 'class-validator'
+import { ILoginDto } from '../../../interfaces/auth.interfaces'
 
-export class LoginDto {
+export class LoginDto implements ILoginDto {
   @ApiProperty({
     description: 'Username',
     example: 'username'

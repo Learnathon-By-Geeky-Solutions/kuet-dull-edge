@@ -6,7 +6,7 @@ import { LoginDto } from '../modules/auth/dto/login.dto'
 import { firstValueFrom } from 'rxjs'
 
 @Injectable()
-export class LocalAuthGuard extends AuthGuard('\local') {
+export class LocalAuthGuard extends AuthGuard('local') {
   constructor() {
     super()
   }

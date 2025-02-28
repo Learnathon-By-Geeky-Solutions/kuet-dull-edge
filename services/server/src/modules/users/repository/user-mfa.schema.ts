@@ -1,14 +1,16 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document } from 'mongoose'
+import { Document, Types } from 'mongoose'
 import * as bcrypt from 'bcrypt'
-
-export enum MFAType {
-  TOTP = 'totp',
-  SMS = 'sms'
-}
+import { IUserMFA, MFAType } from 'src/interfaces/users.interfaces'
 
 @Schema({ timestamps: true })
-export class UserMFA extends Document {
+export class UserMFA extends Document implements IUserMFA {
+  @Prop({ type: Types.ObjectId, required: true, unique: true })
+  _id: Types.ObjectId
+
+  @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
+  userId: Types.ObjectId
+
   @Prop({ default: false })
   enabled: boolean
 
@@ -20,6 +22,8 @@ export class UserMFA extends Document {
 
   @Prop({ type: [String], required: false })
   recoveryCodes?: string[]
+
+  compareRecoveryCode: (code: string) => Promise<boolean>
 }
 
 export const UserMFASchema = SchemaFactory.createForClass(UserMFA)
