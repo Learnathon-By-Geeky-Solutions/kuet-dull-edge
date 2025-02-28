@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, HttpException, Injectable } from '@nestjs/common'
 import axios from 'axios'
-import { config } from '../../config'
+import { config } from '../modules/config'
 
 @Injectable()
 export class McaptchaGuard implements CanActivate {

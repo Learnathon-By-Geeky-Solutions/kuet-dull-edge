@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
-import { AccountStatus, UserAuth } from '../schemas/user-auth.schema'
+import { AccountStatus, UserAuth } from '../repository/user-auth.schema'
 
 @Injectable()
 export class UserAuthService {

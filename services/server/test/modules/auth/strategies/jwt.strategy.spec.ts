@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { JwtStrategy, JwtRefreshStrategy } from '../../../../src/modules/auth/strategies/jwt.strategy'
 import { UnauthorizedException } from '@nestjs/common'
-import { AccountStatus } from '../../../../src/modules/users/schemas/user-auth.schema'
+import { AccountStatus } from '../../../../src/modules/users/repository/user-auth.schema'
 import { Types } from 'mongoose'
 
 describe('JwtStrategy', () => {

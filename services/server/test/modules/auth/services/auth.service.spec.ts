@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { JwtService } from '@nestjs/jwt'
 import { Types } from 'mongoose'
-import { AuthService } from '../../../../src/modules/auth/services/auth.service'
+import { AuthService } from '../../../../src/modules/auth/auth.service'
 import { UserAuthService } from '../../../../src/modules/users/services/user-auth.service'
 import { RefreshTokenService } from '../../../../src/modules/auth/services/refreshToken.service'
-import { AccountStatus } from '../../../../src/modules/users/schemas/user-auth.schema'
+import { AccountStatus } from '../../../../src/modules/users/repository/user-auth.schema'
 import { UnauthorizedException } from '@nestjs/common'
 
 describe('AuthService', () => {

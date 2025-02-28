@@ -13,20 +13,20 @@ import {
   VERSION_NEUTRAL
 } from '@nestjs/common'
 import { RegistrationService } from './services/registration.service'
-import { AuthService } from './services/auth.service'
+import { AuthService } from './auth.service'
 import { RegisterDto } from './dto/register.dto'
 import { EmailVerifyDto } from './dto/email-verify.dto'
 import { OnboardingDto } from './dto/onboarding.dto'
 import { Throttle } from '@nestjs/throttler'
 import { EmptyBodyValidationPipe } from '../../common/pipes/emptyBody'
-import { JwtAuthGuard } from './guards/jwt-auth.guard'
+import { JwtAuthGuard } from '../../guards/jwt-auth.guard'
 import { AuthGuard } from '@nestjs/passport'
-import { AccountStatus } from '../users/schemas/user-auth.schema'
-import { GoogleAuthGuard } from './guards/google.guard'
+import { AccountStatus } from '../users/repository/user-auth.schema'
+import { GoogleAuthGuard } from '../../guards/google.guard'
 import { OAuthOnboardingDto } from './dto/oauth-onboarding.dto'
 import { TokenResponseDto } from './dto/token-response.dto'
 import { config } from '../config'
-import { LocalAuthGuard } from './guards/local-auth.guard'
+import { LocalAuthGuard } from '../../guards/local-auth.guard'
 import {
   ApiTags,
   ApiOperation,

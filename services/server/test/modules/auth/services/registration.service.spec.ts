@@ -9,13 +9,13 @@ import { EmailVerificationService } from '../../../../src/modules/auth/services/
 import { UserAuthService } from '../../../../src/modules/users/services/user-auth.service'
 import { UserDetailsService } from '../../../../src/modules/users/services/user-details.service'
 import { UserPeekService } from '../../../../src/modules/users/services/user-peek.service'
-import { AccountStatus, UserAuth, UserAuthSchema } from '../../../../src/modules/users/schemas/user-auth.schema'
-import { UserDetails, UserDetailsSchema } from '../../../../src/modules/users/schemas/user-details.schema'
-import { UserPeek, UserPeekSchema } from '../../../../src/modules/users/schemas/user-peek.schema'
+import { AccountStatus, UserAuth, UserAuthSchema } from '../../../../src/modules/users/repository/user-auth.schema'
+import { UserDetails, UserDetailsSchema } from '../../../../src/modules/users/repository/user-details.schema'
+import { UserPeek, UserPeekSchema } from '../../../../src/modules/users/repository/user-peek.schema'
 import {
   EmailVerification,
   EmailVerificationSchema
-} from '../../../../src/modules/auth/schemas/email-verification.schema'
+} from '../../../../src/modules/auth/repository/email-verification.schema'
 
 describe('RegistrationService', () => {
   let service: RegistrationService

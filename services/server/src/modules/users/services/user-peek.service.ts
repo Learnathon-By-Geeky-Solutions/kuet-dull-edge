@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
-import { UserPeek } from '../schemas/user-peek.schema'
+import { UserPeek } from '../repository/user-peek.schema'
 
 // filepath: /home/zihad/Projects/kuet
 

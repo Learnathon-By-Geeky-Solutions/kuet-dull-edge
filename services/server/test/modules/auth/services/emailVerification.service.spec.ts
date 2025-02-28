@@ -5,7 +5,7 @@ import { EmailVerificationService } from '../../../../src/modules/auth/services/
 import {
   EmailVerificationSchema,
   EmailVerification
-} from '../../../../src/modules/auth/schemas/email-verification.schema'
+} from '../../../../src/modules/auth/repository/email-verification.schema'
 import { BadRequestException, InternalServerErrorException } from '@nestjs/common'
 import { MongoMemoryServer } from 'mongodb-memory-server'
 

@@ -1,8 +1,11 @@
 import { Model, Types, Connection, connect } from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
 import * as bcrypt from 'bcrypt'
-import { RefreshToken, RefreshTokenSchema } from '../../../src/modules/auth/schemas/refreshToken.schema'
-import { EmailVerification, EmailVerificationSchema } from '../../../src/modules/auth/schemas/email-verification.schema'
+import { RefreshToken, RefreshTokenSchema } from '../../../src/modules/auth/repository/refreshToken.schema'
+import {
+  EmailVerification,
+  EmailVerificationSchema
+} from '../../../src/modules/auth/repository/email-verification.schema'
 import { config } from '../../../src/modules/config'
 
 describe('AuthSchemas', () => {

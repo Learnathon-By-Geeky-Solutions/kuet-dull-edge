@@ -1,10 +1,4 @@
-import {
-  IsNotEmpty,
-  IsString,
-  MinLength,
-  MaxLength,
-  Matches
-} from 'class-validator'
+import { IsNotEmpty, IsString, MinLength, MaxLength, Matches } from 'class-validator'
 import { OnboardingDto } from './onboarding.dto'
 
 export class OAuthOnboardingDto extends OnboardingDto {
@@ -15,3 +9,4 @@ export class OAuthOnboardingDto extends OnboardingDto {
   @Matches(/^[a-zA-Z0-9_.]{3,20}$/)
   username: string
 }
+l

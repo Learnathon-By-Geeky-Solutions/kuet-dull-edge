@@ -2,7 +2,7 @@ import { BadRequestException, ExecutionContext, Injectable } from '@nestjs/commo
 import { AuthGuard } from '@nestjs/passport'
 import { plainToClass } from 'class-transformer'
 import { validate } from 'class-validator'
-import { LoginDto } from '../dto/login.dto'
+import { LoginDto } from '../modules/auth/dto/login.dto'
 import { firstValueFrom } from 'rxjs'
 
 @Injectable()
