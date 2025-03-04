@@ -13,19 +13,17 @@ import {
   VERSION_NEUTRAL
 } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { RegisterDto } from './dto/register.dto'
-import { EmailVerifyDto } from './dto/email-verify.dto'
-import { OnboardingDto } from './dto/onboarding.dto'
+import { LoginDto, RegisterDto, OnboardingDto, OAuthOnboardingDto, TokenResponseDto, EmailVerifyDto } from './auth.dto'
 import { Throttle } from '@nestjs/throttler'
 import { EmptyBodyValidationPipe } from '../common/pipes/emptyBody'
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard'
 import { AuthGuard } from '@nestjs/passport'
-import { AccountStatus } from '../../interfaces/users.interfaces'
+import { AccountStatus, MFAType } from '../../interfaces/users.interfaces'
 import { GoogleAuthGuard } from '../../guards/google.guard'
-import { OAuthOnboardingDto } from './dto/oauth-onboarding.dto'
-import { TokenResponseDto } from './dto/token-response.dto'
+
 import { config } from '../config'
 import { LocalAuthGuard } from '../../guards/local-auth.guard'
+import { Types } from 'mongoose'
 import {
   ApiTags,
   ApiOperation,
@@ -33,11 +31,15 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiCookieAuth,
-  ApiExcludeEndpoint
+  ApiExcludeEndpoint,
+  ApiHeader
 } from '@nestjs/swagger'
-import { LoginDto } from './dto/login.dto'
 
 @ApiTags('Authentication')
+@ApiHeader({
+  name: 'x-api-version',
+  required: true
+})
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -49,7 +51,7 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 3600 } })
   @UsePipes(EmptyBodyValidationPipe)
   async anonymous(@Body() body: undefined) {
-    return this.authService.getAnonymousUser()
+    return this.authService.getAnonymousToken()
   }
 
   @Post()
@@ -71,8 +73,8 @@ export class AuthController {
       generateKey: context => context.switchToHttp().getRequest().user.id
     }
   })
-  @UseGuards(JwtAuthGuard)
   @UseGuards(LocalAuthGuard)
+  @UseGuards(JwtAuthGuard)
   async login(@Request() req: any, @Res() res: any) {
     if (req.userData === undefined) throw new UnauthorizedException('INVALID_CREDENTIALS')
     const { token, refreshToken } = req.userData
@@ -96,8 +98,8 @@ export class AuthController {
       generateKey: context => context.switchToHttp().getRequest().user.id
     }
   })
-  @UseGuards(JwtAuthGuard)
   @UseGuards(GoogleAuthGuard)
+  @UseGuards(JwtAuthGuard)
   async googleLogin() {
     return
   }
@@ -127,8 +129,8 @@ export class AuthController {
       generateKey: context => context.switchToHttp().getRequest().user.id
     }
   })
-  @UseGuards(JwtAuthGuard)
   @UseGuards(AuthGuard('github'))
+  @UseGuards(JwtAuthGuard)
   async githubLogin() {
     return
   }
@@ -157,7 +159,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   @ApiBody({ type: RegisterDto })
-  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @Throttle({
     default: {
       limit: 5,
@@ -165,7 +167,6 @@ export class AuthController {
       generateKey: context => context.switchToHttp().getRequest().user.id
     }
   })
-  @UseGuards(AuthGuard('jwt'))
   async register(@Body() body: RegisterDto, @Request() req: any) {
     if (req.user.accountStatus !== AccountStatus.ANONYMOUS) throw new UnauthorizedException()
     return await this.authService.registerLocal(body)
@@ -182,7 +183,7 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'Username/ email taken' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   @ApiBody({ type: EmailVerifyDto })
-  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @Throttle({
     default: {
       limit: 4,
@@ -191,10 +192,8 @@ export class AuthController {
     }
   })
   @Post('verify-email')
-  @UseGuards(JwtAuthGuard)
   async verifyEmail(@Body() emailVerifyDto: EmailVerifyDto, @Request() req: any) {
-    if (req.user.accountStatus !== AccountStatus.EMAIL_VERIFICATION) throw new UnauthorizedException()
-    return this.authService.verifyEmail(req.user._id, emailVerifyDto.verificationCode)
+    return this.authService.verifyEmail(emailVerifyDto)
   }
 
   @ApiOperation({ summary: 'Resend email verification' })
@@ -202,6 +201,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @Throttle({
     default: {
       limit: 1,
@@ -211,9 +211,8 @@ export class AuthController {
   })
   @Post('resend-email')
   @UsePipes(EmptyBodyValidationPipe)
-  @UseGuards(JwtAuthGuard)
-  async resendEmail(@Body() body: undefined, @Request() req: any) {
-    return this.authService.resendVerificationEmail(req.user.id)
+  async resendEmail(@Body() body: TokenResponseDto) {
+    return this.authService.resendVerificationEmail(body.token)
   }
 
   @ApiOperation({ summary: 'Complete user onboarding' })
@@ -228,8 +227,8 @@ export class AuthController {
   @ApiBearerAuth()
   @Post('onboarding')
   @UseGuards(JwtAuthGuard)
-  async onboarding(@Body() onboardingDto: OnboardingDto, @Request() req: any) {
-    return this.authService.registerOnboarding(req.user._id, onboardingDto)
+  async onboarding(@Body() onboardingDto: OnboardingDto) {
+    return this.authService.registerOnboarding(onboardingDto)
   }
 
   @ApiOperation({ summary: 'Complete OAuth user onboarding' })
@@ -264,4 +263,83 @@ export class AuthController {
     if (!refreshToken) throw new UnauthorizedException()
     return this.authService.refreshToken(refreshToken)
   }
+  // }
+  // @ApiOperation({ summary: 'Setup Multi-Factor Authentication' })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'MFA setup initiated',
+  //   type: MFASetupResponseDto
+  // })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // @ApiBody({ type: MFASetupDto })
+  // @ApiBearerAuth()
+  // @Post('mfa/setup')
+  // @Post('mfa/setup')
+  // @UseGuards(JwtAuthGuard)
+  // async setupMFA(@Body() mfaSetupDto: MFASetupDto, @Request() req: any) {
+  //   if (req.user.accountStatus !== AccountStatus.ACTIVE) throw new UnauthorizedException()
+  //   return this.authService.setupMFA(req.user._id, mfaSetupDto.type as MFAType)
+  // }
+
+  // //TODO: Use specific guard for active accounts
+  // @ApiOperation({ summary: 'Verify and enable MFA' })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'MFA enabled',
+  //   type: MFAVerifyResponseDto
+  // })
+  // @ApiResponse({ status: 400, description: 'Invalid code or MFA setup' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // @ApiBody({ type: MFAVerifyDto })
+  // @ApiBearerAuth()
+  // @Post('mfa/verify')
+  // @UseGuards(JwtAuthGuard)
+  // async verifyAndEnableMFA(@Body() mfaVerifyDto: MFAVerifyDto, @Request() req: any) {
+  //   if (req.user.accountStatus !== AccountStatus.ACTIVE) throw new UnauthorizedException()
+
+  //   return this.authService.verifyAndEnableMFA(req.user._id, mfaVerifyDto.code, new Types.ObjectId(mfaVerifyDto.mfaId))
+  // }
+
+  // @ApiOperation({ summary: 'Get MFA status' })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'MFA status retrieved',
+  //   type: MFAStatusResponseDto
+  // })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // @ApiBearerAuth()
+  // @Get('mfa/status')
+  // @UseGuards(JwtAuthGuard)
+  // async getMFAStatus(@Request() req: any) {
+  //   if (req.user.accountStatus !== AccountStatus.ACTIVE) throw new UnauthorizedException()
+  //   const mfaList = await this.authService.getMFAStatus(req.user._id)
+  //   return { mfaList }
+  // }
+
+  // @ApiOperation({ summary: 'Disable MFA' })
+  // @ApiResponse({ status: 200, description: 'MFA disabled' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // @ApiBearerAuth()
+  // @Post('mfa/disable')
+  // @UsePipes(EmptyBodyValidationPipe)
+  // @UseGuards(JwtAuthGuard)
+  // async disableMFA(@Body() body: undefined, @Request() req: any) {
+  //   if (req.user.accountStatus !== AccountStatus.ACTIVE) throw new UnauthorizedException() // TODO: use specific guard for active accounts
+  //   await this.authService.disableMFA(req.user._id)
+  //   return { success: true }
+  // }
+
+  // @ApiOperation({ summary: 'Use recovery code' })
+  // @ApiResponse({ status: 200, description: 'Recovery code validated' })
+  // @ApiResponse({ status: 400, description: 'Invalid recovery code' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // @ApiBody({ type: MFARecoveryDto })
+  // @ApiBearerAuth()
+  // @Post('mfa/recovery')
+  // @UseGuards(JwtAuthGuard)
+  // async validateRecoveryCode(@Body() mfaRecoveryDto: MFARecoveryDto, @Request() req: any) {
+  //   const isValid = await this.authService.validateRecoveryCode(req.user._id, mfaRecoveryDto.code)
+  //   if (!isValid) throw new UnauthorizedException('Invalid recovery code')
+  //   return { success: true }
+  // }
 }

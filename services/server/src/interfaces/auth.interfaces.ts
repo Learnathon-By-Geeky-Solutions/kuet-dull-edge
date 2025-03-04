@@ -1,10 +1,10 @@
+import { ApiProperty } from '@nestjs/swagger'
+import { IsString, MinLength, MaxLength, IsNotEmpty } from 'class-validator'
 import { Document, Types } from 'mongoose'
 
-// DTO Interfaces
-export interface IRegisterDto {
-  username: string
-  email: string
-  password: string
+export interface IEmailVerifyDto {
+  verificationCode: string
+  token: string
 }
 
 export interface ILoginDto {
@@ -17,20 +17,20 @@ export interface IOnboardingDto {
   birthday: string
   institute: string
   instituteIdentifier: string
+  token: string
 }
 
 export interface IOAuthOnboardingDto extends IOnboardingDto {
   username: string
 }
 
-export interface IEmailVerifyDto {
-  verificationCode: string
+export interface IMFARecoveryDto {
+  code: string
 }
 
 export interface ITokenResponseDto {
   token: string
 }
-
 // Schema Interfaces
 export interface IEmailVerification extends Document {
   verificationCode: string
@@ -44,4 +44,35 @@ export interface IRefreshToken extends Document {
   tokenHash: string
   createdAt: Date
   compareToken(token: string): Promise<boolean>
+}
+
+// MFA
+export interface IMFASetupDto {
+  type: string
+}
+
+export interface IMFAVerifyDto {
+  code: string
+  mfaId: string
+}
+
+export interface IMFASetupResponseDto {
+  secret: string
+  uri: string
+  mfaId: string
+}
+
+export interface IMFAVerifyResponseDto {
+  recoveryCodes: string[]
+}
+
+export interface IMFAStatusResponseDto {
+  mfaList: Array<{
+    type: string
+    _id: string
+  }>
+}
+
+export interface IMFARecoveryDto {
+  code: string
 }

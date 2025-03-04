@@ -6,7 +6,7 @@ import { UserAuth } from '../../users/repository/user-auth.schema'
 import { UserDetails } from '../../users/repository/user-details.schema'
 import { UserPeek } from '../../users/repository/user-peek.schema'
 import { AccountStatus } from '../../../interfaces/users.interfaces'
-import { UserMFA, MFAType } from './user-mfa.schema'
+import { UserMFA } from './user-mfa.schema'
 
 @Injectable()
 export class UserAuthRepository extends GenericRepository<UserAuth> {
@@ -18,12 +18,13 @@ export class UserAuthRepository extends GenericRepository<UserAuth> {
   }
 
   async findByEmailOrUsername(email: string, username: string, session?: ClientSession): Promise<UserAuth | null> {
-    return this.findOne(
-      {
-        $or: [{ email: email || '' }, { username: username || '' }]
-      },
-      session
-    )
+    const conditions = []
+    if (email) conditions.push({ email })
+    if (username) conditions.push({ username })
+
+    if (conditions.length === 0) return null
+
+    return this.findOne({ $or: conditions }, session)
   }
 
   async updateAccountStatus(
@@ -35,6 +36,7 @@ export class UserAuthRepository extends GenericRepository<UserAuth> {
   }
 
   async createUser(userData: Partial<UserAuth>, session?: ClientSession): Promise<UserAuth | null> {
+    if (userData._id === undefined) userData._id = new Types.ObjectId()
     return this.create(userData, session)
   }
 
@@ -139,8 +141,8 @@ export class UserMFARepository extends GenericRepository<UserMFA> {
     return this.update({ userId }, mfaData, session)
   }
 
-  async enableMFA(userId: Types.ObjectId, session?: ClientSession): Promise<UserMFA | null> {
-    return this.update({ userId }, { enabled: true }, session)
+  async enableMFA(mfaId: Types.ObjectId, session?: ClientSession): Promise<UserMFA | null> {
+    return this.update({ _id: mfaId }, { enabled: true }, session)
   }
 
   async disableMFA(userId: Types.ObjectId, session?: ClientSession): Promise<UserMFA | null> {

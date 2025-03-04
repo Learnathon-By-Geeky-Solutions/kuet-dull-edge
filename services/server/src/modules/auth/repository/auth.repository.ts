@@ -61,8 +61,12 @@ export class RefreshTokenRepository extends GenericRepository<RefreshToken> {
     )
   }
 
-  async createToken(userId: Types.ObjectId, token: string, session?: ClientSession): Promise<RefreshToken | null> {
-    const rtId = new Types.ObjectId()
+  async createToken(
+    userId: Types.ObjectId,
+    rtId: Types.ObjectId,
+    token: string,
+    session?: ClientSession
+  ): Promise<RefreshToken | null> {
     return this.create(
       {
         _id: rtId,

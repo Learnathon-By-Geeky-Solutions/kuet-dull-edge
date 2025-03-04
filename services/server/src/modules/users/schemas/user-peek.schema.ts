@@ -4,7 +4,7 @@ import { IUserPeek } from '../../../interfaces/users.interfaces'
 
 @Schema({ timestamps: true })
 export class UserPeek extends Document implements IUserPeek {
-  @Prop({ required: true, type: Types.ObjectId })
+  @Prop({ required: true, type: Types.ObjectId, auto: true, unique: true, index: true })
   _id: Types.ObjectId
 
   @Prop({ required: true })

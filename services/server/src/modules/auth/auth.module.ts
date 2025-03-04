@@ -13,7 +13,6 @@ import { GitHubStrategy } from './strategies/github.strategy'
 import { LocalStrategy } from './strategies/local.strategy'
 import { RefreshTokenSchema } from './repository/refreshToken.schema'
 import { EmailVerificationRepository, RefreshTokenRepository } from './repository/auth.repository'
-
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -38,6 +37,6 @@ import { EmailVerificationRepository, RefreshTokenRepository } from './repositor
     RefreshTokenRepository
   ],
   controllers: [AuthController],
-  exports: [JwtModule]
+  exports: [JwtModule, EmailVerificationRepository, RefreshTokenRepository]
 })
 export class AuthModule {}

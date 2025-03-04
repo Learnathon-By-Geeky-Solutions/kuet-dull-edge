@@ -1,50 +1,48 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { AuthController } from '../../../src/modules/auth/auth.controller'
 import { AuthService } from '../../../src/modules/auth/auth.service'
-import { RegistrationService } from '../../../src/modules/auth/services/registration.service'
-import { AccountStatus } from '../../../src/modules/users/repository/user-auth.schema'
+import { JwtAuthGuard } from '../../../src/guards/jwt-auth.guard'
+import { GoogleAuthGuard } from '../../../src/guards/google.guard'
+import { LocalAuthGuard } from '../../../src/guards/local-auth.guard'
 import { UnauthorizedException } from '@nestjs/common'
-import { RegisterDto } from '../../../src/modules/auth/dto/register.dto'
-import { EmailVerifyDto } from '../../../src/modules/auth/dto/email-verify.dto'
-import { OnboardingDto } from '../../../src/modules/auth/dto/onboarding.dto'
-import { OAuthOnboardingDto } from '../../../src/modules/auth/dto/oauth-onboarding.dto'
-import { Types } from 'mongoose'
+import { AccountStatus } from '../../../src/interfaces/users.interfaces'
+import { config } from '../../../src/modules/config'
 
 describe('AuthController', () => {
   let controller: AuthController
   let authService: AuthService
-  let registrationService: RegistrationService
-
-  const mockAuthService = {
-    getAnonymousUser: jest.fn(),
-    oauthEntry: jest.fn(),
-    refreshToken: jest.fn()
-  }
-
-  const mockRegistrationService = {
-    registerLocal: jest.fn(),
-    verifyEmail: jest.fn(),
-    resendVerificationEmail: jest.fn(),
-    registerOnboarding: jest.fn(),
-    registerOnboardingOauth: jest.fn()
-  }
 
   beforeEach(async () => {
+    const authServiceMock = {
+      getAnonymousToken: jest.fn(),
+      oauthEntry: jest.fn(),
+      refreshToken: jest.fn(),
+      registerLocal: jest.fn(),
+      verifyEmail: jest.fn(),
+      resendVerificationEmail: jest.fn(),
+      registerOnboarding: jest.fn(),
+      registerOnboardingOauth: jest.fn()
+    }
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
-        { provide: AuthService, useValue: mockAuthService },
-        { provide: RegistrationService, useValue: mockRegistrationService }
+        {
+          provide: AuthService,
+          useValue: authServiceMock
+        }
       ]
-    }).compile()
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .overrideGuard(GoogleAuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .overrideGuard(LocalAuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .compile()
 
     controller = module.get<AuthController>(AuthController)
     authService = module.get<AuthService>(AuthService)
-    registrationService = module.get<RegistrationService>(RegistrationService)
-  })
-
-  afterEach(() => {
-    jest.clearAllMocks()
   })
 
   it('should be defined', () => {
@@ -52,399 +50,433 @@ describe('AuthController', () => {
   })
 
   describe('anonymous', () => {
-    it('should return anonymous user token', async () => {
-      const mockToken = { token: 'anonymous-token' }
-      mockAuthService.getAnonymousUser.mockResolvedValue(mockToken)
+    it('should return anonymous token', async () => {
+      const expectedToken = { token: 'anonymous-token' }
+      jest.spyOn(authService, 'getAnonymousToken').mockResolvedValue(expectedToken)
 
       const result = await controller.anonymous(undefined)
 
-      expect(result).toEqual(mockToken)
-      expect(mockAuthService.getAnonymousUser).toHaveBeenCalled()
+      expect(authService.getAnonymousToken).toHaveBeenCalled()
+      expect(result).toEqual(expectedToken)
     })
 
     it('should handle errors when getting anonymous token', async () => {
-      mockAuthService.getAnonymousUser.mockRejectedValue(new Error('Service error'))
+      const error = new Error('Service error')
+      jest.spyOn(authService, 'getAnonymousToken').mockRejectedValue(error)
 
-      await expect(controller.anonymous(undefined)).rejects.toThrow('Service error')
+      await expect(controller.anonymous(undefined)).rejects.toThrow(error)
     })
   })
 
   describe('login', () => {
-    it('should set refresh token cookie and return auth token', async () => {
-      const mockUserData = { token: 'auth-token', refreshToken: 'refresh-token' }
-      const mockReq = { userData: mockUserData }
-      const mockRes = {
+    it('should return token and set refresh token cookie on successful login', async () => {
+      const req = {
+        userData: {
+          token: 'auth-token',
+          refreshToken: 'refresh-token'
+        }
+      }
+
+      const res = {
         cookie: jest.fn(),
         json: jest.fn()
       }
 
-      await controller.login(mockReq, mockRes)
+      await controller.login(req, res)
 
-      expect(mockRes.cookie).toHaveBeenCalledWith(
-        'refresh-token',
-        'refresh-token',
-        expect.objectContaining({
-          httpOnly: true,
-          sameSite: 'strict'
-        })
-      )
-      expect(mockRes.json).toHaveBeenCalledWith({ token: 'auth-token' })
+      expect(res.cookie).toHaveBeenCalledWith('refresh-token', 'refresh-token', {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: config._.mode === 'production'
+      })
+      expect(res.json).toHaveBeenCalledWith({ token: 'auth-token' })
     })
 
     it('should throw UnauthorizedException when userData is undefined', async () => {
-      const mockReq = { userData: undefined }
-      const mockRes = { cookie: jest.fn(), json: jest.fn() }
+      const req = { userData: undefined }
+      const res = {} as Response
 
-      await expect(controller.login(mockReq, mockRes)).rejects.toThrow(UnauthorizedException)
+      await expect(controller.login(req, res)).rejects.toThrow(UnauthorizedException)
+      await expect(controller.login(req, res)).rejects.toThrow('INVALID_CREDENTIALS')
     })
   })
 
   describe('googleLogin', () => {
-    it('should return undefined (handled by guard)', async () => {
+    it('should return undefined (function just initiates OAuth flow)', async () => {
       const result = await controller.googleLogin()
       expect(result).toBeUndefined()
     })
   })
 
   describe('googleLoginCallback', () => {
-    it('should return redirect URL with token', async () => {
-      const mockUser = { email: 'test@example.com' }
-      const mockToken = { token: 'google-auth-token' }
-      mockAuthService.oauthEntry.mockResolvedValue(mockToken)
+    it('should redirect to frontend with token', async () => {
+      const req = {
+        user: { id: 'google-user-id' }
+      }
 
-      const result = await controller.googleLoginCallback({ user: mockUser })
+      const token = 'google-auth-token'
+      const frontendUrl = 'http://localhost:4000'
 
+      process.env.FRONTEND_URL = frontendUrl
+
+      jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token })
+
+      const result = await controller.googleLoginCallback(req)
+
+      expect(authService.oauthEntry).toHaveBeenCalledWith(req.user)
       expect(result).toEqual({
-        url: expect.stringContaining('auth/callback?token=google-auth-token')
+        url: `${frontendUrl}/auth/callback?token=${token}`
       })
-      expect(mockAuthService.oauthEntry).toHaveBeenCalledWith(mockUser)
+    })
+
+    it('should use default frontend URL if env variable is not set', async () => {
+      const req = {
+        user: { id: 'google-user-id' }
+      }
+
+      const token = 'google-auth-token'
+      const defaultFrontendUrl = 'http://localhost:4000'
+
+      process.env.FRONTEND_URL = '' // Clear env variable
+
+      jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token })
+
+      const result = await controller.googleLoginCallback(req)
+
+      expect(authService.oauthEntry).toHaveBeenCalledWith(req.user)
+      expect(result).toEqual({
+        url: `${defaultFrontendUrl}/auth/callback?token=${token}`
+      })
     })
 
     it('should handle errors during OAuth entry', async () => {
-      mockAuthService.oauthEntry.mockRejectedValue(new Error('OAuth error'))
+      const req = {
+        user: { id: 'google-user-id' }
+      }
 
-      await expect(controller.googleLoginCallback({ user: {} })).rejects.toThrow('OAuth error')
+      const error = new Error('OAuth entry failed')
+      jest.spyOn(authService, 'oauthEntry').mockRejectedValue(error)
+
+      await expect(controller.googleLoginCallback(req)).rejects.toThrow(error)
     })
   })
 
   describe('githubLogin', () => {
-    it('should return undefined (handled by guard)', async () => {
+    it('should return undefined (function just initiates OAuth flow)', async () => {
       const result = await controller.githubLogin()
       expect(result).toBeUndefined()
     })
   })
 
   describe('githubLoginCallback', () => {
-    it('should return redirect URL with token', async () => {
-      const mockUser = { login: 'testuser' }
-      const mockToken = { token: 'github-auth-token' }
-      mockAuthService.oauthEntry.mockResolvedValue(mockToken)
+    it('should redirect to frontend with token', async () => {
+      const req = {
+        user: { id: 'github-user-id' }
+      }
 
-      const result = await controller.githubLoginCallback({ user: mockUser })
+      const token = 'github-auth-token'
+      const refreshToken = 'token'
+      const frontendUrl = 'http://localhost:4000'
 
+      process.env.FRONTEND_URL = frontendUrl
+
+      jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token, refreshToken })
+
+      const result = await controller.githubLoginCallback(req)
+
+      expect(authService.oauthEntry).toHaveBeenCalledWith(req.user)
       expect(result).toEqual({
-        url: expect.stringContaining('auth/callback?token=github-auth-token')
+        url: `${frontendUrl}/auth/callback?token=${token}`
       })
-      expect(mockAuthService.oauthEntry).toHaveBeenCalledWith(mockUser)
+    })
+
+    it('should use default frontend URL if env variable is not set', async () => {
+      const req = {
+        user: { id: 'github-user-id' }
+      }
+
+      const token = 'github-auth-token'
+      const refreshToken = 'token'
+      const defaultFrontendUrl = 'http://localhost:4000'
+
+      delete process.env.FRONTEND_URL // Clear env variable
+
+      jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token, refreshToken })
+
+      const result = await controller.githubLoginCallback(req)
+
+      expect(authService.oauthEntry).toHaveBeenCalledWith(req.user)
+      expect(result).toEqual({
+        url: `${defaultFrontendUrl}/auth/callback?token=${token}`
+      })
     })
 
     it('should handle errors during OAuth entry', async () => {
-      mockAuthService.oauthEntry.mockRejectedValue(new Error('OAuth error'))
-
-      await expect(controller.githubLoginCallback({ user: {} })).rejects.toThrow('OAuth error')
-    })
-  })
-
-  describe('register', () => {
-    // it('should register new user when anonymous', async () => {
-    //   const registerDto: RegisterDto = {
-    //     username: 'testuser',
-    //     email: 'test@example.com',
-    //     password: 'Password123!'
-    //   }
-    //   const mockToken = 'registration-token'
-    //   const mockReq = {
-    //     user: {
-    //       accountStatus: AccountStatus.ANONYMOUS
-    //     }
-    //   }
-    //   mockRegistrationService.registerLocal.mockResolvedValue(mockToken)
-
-    //   const result = await controller.register(registerDto, mockReq)
-
-    //   expect(result).toEqual({ token: mockToken })
-    //   expect(mockRegistrationService.registerLocal).toHaveBeenCalledWith(registerDto)
-    // })
-
-    it('should throw UnauthorizedException when user is not anonymous', async () => {
-      const registerDto: RegisterDto = {
-        username: 'testuser',
-        email: 'test@example.com',
-        password: 'Password123!'
-      }
-      const mockReq = {
-        user: {
-          accountStatus: AccountStatus.ACTIVE
-        }
+      const req = {
+        user: { id: 'github-user-id' }
       }
 
-      await expect(controller.register(registerDto, mockReq)).rejects.toThrow(UnauthorizedException)
-      expect(mockRegistrationService.registerLocal).not.toHaveBeenCalled()
+      const error = new Error('OAuth entry failed')
+      jest.spyOn(authService, 'oauthEntry').mockRejectedValue(error)
+
+      await expect(controller.githubLoginCallback(req)).rejects.toThrow(error)
     })
 
-    it('should handle service errors during registration', async () => {
-      const registerDto: RegisterDto = {
-        username: 'testuser',
-        email: 'test@example.com',
-        password: 'Password123!'
+    it('should properly encode tokens in the redirect URL', async () => {
+      const req = {
+        user: { id: 'github-user-id' }
       }
-      const mockReq = {
-        user: {
-          accountStatus: AccountStatus.ANONYMOUS
-        }
-      }
-      mockRegistrationService.registerLocal.mockRejectedValue(new Error('Registration failed'))
 
-      await expect(controller.register(registerDto, mockReq)).rejects.toThrow('Registration failed')
+      // Token with special characters that should be URI-encoded
+      const token = 'github+token/with?special&characters'
+      const frontendUrl = 'http://localhost:4000'
+      const refreshToken = 'token'
+      process.env.FRONTEND_URL = frontendUrl
+
+      jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token, refreshToken })
+
+      const result = await controller.githubLoginCallback(req)
+
+      expect(result.url).toContain(`token=${token}`)
+      // The URL should be usable (no need to manually encode since browsers handle this)
+      expect(result.url).toEqual(`${frontendUrl}/auth/callback?token=${token}`)
+    })
+
+    it('should handle custom frontend URLs with trailing slashes', async () => {
+      const req = {
+        user: { id: 'github-user-id' }
+      }
+
+      const token = 'github-auth-token'
+      const refreshToken = 'token'
+      const frontendUrl = 'http://localhost:4000'
+
+      process.env.FRONTEND_URL = frontendUrl
+
+      jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token, refreshToken })
+
+      const result = await controller.githubLoginCallback(req)
+
+      // Should correctly handle the URL without double slashes
+      expect(result.url).toEqual(`http://localhost:4000/auth/callback?token=${token}`)
+    })
+
+    it('should handle empty user object from GitHub', async () => {
+      const req = {
+        user: {}
+      }
+
+      const token = 'github-auth-token'
+      const refreshToken = 'token'
+      jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token, refreshToken })
+
+      const result = await controller.githubLoginCallback(req)
+
+      expect(authService.oauthEntry).toHaveBeenCalledWith(req.user)
+      expect(result.url).toContain(`token=${token}`)
     })
   })
 
   describe('verifyEmail', () => {
-    it('should verify email with valid code', async () => {
-      const emailVerifyDto: EmailVerifyDto = {
-        verificationCode: '123456'
+    it('should call authService.verifyEmail with correct parameters', async () => {
+      const emailVerifyDto = {
+        verificationCode: '123456',
+        token: 'jwt-token-here'
       }
-      const mockReq = {
-        user: {
-          _id: new Types.ObjectId(),
-          accountStatus: AccountStatus.EMAIL_VERIFICATION
-        }
-      }
-      const mockResponse = { token: 'new-token' }
-      mockRegistrationService.verifyEmail.mockResolvedValue(mockResponse)
 
-      const result = await controller.verifyEmail(emailVerifyDto, mockReq)
+      const req = { user: { id: 'user-id' } }
+      const expectedResult = { token: 'verified-token' }
 
-      expect(result).toEqual(mockResponse)
-      expect(mockRegistrationService.verifyEmail).toHaveBeenCalledWith(
-        mockReq.user._id,
-        emailVerifyDto.verificationCode
-      )
+      jest.spyOn(authService, 'verifyEmail').mockResolvedValue(expectedResult)
+
+      const result = await controller.verifyEmail(emailVerifyDto, req)
+
+      expect(authService.verifyEmail).toHaveBeenCalledWith(emailVerifyDto)
+      expect(result).toEqual(expectedResult)
     })
 
-    it('should throw UnauthorizedException when user is not in EMAIL_VERIFICATION state', async () => {
-      const emailVerifyDto: EmailVerifyDto = {
-        verificationCode: '123456'
-      }
-      const mockReq = {
-        user: {
-          _id: new Types.ObjectId(),
-          accountStatus: AccountStatus.ACTIVE
-        }
+    it('should handle verification errors', async () => {
+      const emailVerifyDto = {
+        verificationCode: 'invalid',
+        token: 'jwt-token-here'
       }
 
-      await expect(controller.verifyEmail(emailVerifyDto, mockReq)).rejects.toThrow(UnauthorizedException)
-      expect(mockRegistrationService.verifyEmail).not.toHaveBeenCalled()
-    })
+      const req = { user: { id: 'user-id' } }
+      const error = new Error('Invalid verification code')
 
-    it('should handle invalid verification code', async () => {
-      const emailVerifyDto: EmailVerifyDto = {
-        verificationCode: '123456'
-      }
-      const mockReq = {
-        user: {
-          _id: new Types.ObjectId(),
-          accountStatus: AccountStatus.EMAIL_VERIFICATION
-        }
-      }
-      mockRegistrationService.verifyEmail.mockRejectedValue(new Error('Invalid verification code'))
+      jest.spyOn(authService, 'verifyEmail').mockRejectedValue(error)
 
-      await expect(controller.verifyEmail(emailVerifyDto, mockReq)).rejects.toThrow('Invalid verification code')
+      await expect(controller.verifyEmail(emailVerifyDto, req)).rejects.toThrow(error)
     })
   })
 
   describe('resendEmail', () => {
-    it('should resend verification email', async () => {
-      const mockReq = {
-        user: {
-          id: 'user-id'
-        }
-      }
-      const mockResponse = { success: true }
-      mockRegistrationService.resendVerificationEmail.mockResolvedValue(mockResponse)
+    it('should call authService.resendVerificationEmail with token', async () => {
+      const body = { token: 'jwt-token' }
+      const expectedResult = { success: true }
 
-      const result = await controller.resendEmail(undefined, mockReq)
+      jest.spyOn(authService, 'resendVerificationEmail').mockResolvedValue(expectedResult)
 
-      expect(result).toEqual(mockResponse)
-      expect(mockRegistrationService.resendVerificationEmail).toHaveBeenCalledWith(mockReq.user.id)
+      const result = await controller.resendEmail(body)
+
+      expect(authService.resendVerificationEmail).toHaveBeenCalledWith(body.token)
+      expect(result).toEqual(expectedResult)
     })
 
-    it('should handle errors when resending email', async () => {
-      const mockReq = {
-        user: {
-          id: 'user-id'
-        }
-      }
-      mockRegistrationService.resendVerificationEmail.mockRejectedValue(new Error('Email service error'))
+    it('should handle errors when resending verification email', async () => {
+      const body = { token: 'jwt-token' }
+      const error = new Error('Failed to resend email')
 
-      await expect(controller.resendEmail(undefined, mockReq)).rejects.toThrow('Email service error')
+      jest.spyOn(authService, 'resendVerificationEmail').mockRejectedValue(error)
+
+      await expect(controller.resendEmail(body)).rejects.toThrow(error)
     })
   })
 
   describe('onboarding', () => {
-    it('should complete onboarding process', async () => {
-      const onboardingDto: OnboardingDto = {
+    it('should call authService.registerOnboarding with correct parameters', async () => {
+      const onboardingDto = {
         name: 'Test User',
         birthday: '1990-01-01',
-        institute: 'Test Institute',
-        instituteIdentifier: '12345'
+        institute: 'Test University',
+        instituteIdentifier: '12345',
+        token: 'jwt-token'
       }
-      const mockReq = {
-        user: {
-          _id: new Types.ObjectId()
-        }
-      }
-      const mockResponse = { token: 'onboarding-complete-token' }
-      mockRegistrationService.registerOnboarding.mockResolvedValue(mockResponse)
 
-      const result = await controller.onboarding(onboardingDto, mockReq)
+      const expectedResult = { token: 'onboarded-token' }
 
-      expect(result).toEqual(mockResponse)
-      expect(mockRegistrationService.registerOnboarding).toHaveBeenCalledWith(mockReq.user._id, onboardingDto)
+      jest.spyOn(authService, 'registerOnboarding').mockResolvedValue(expectedResult)
+
+      const result = await controller.onboarding(onboardingDto)
+
+      expect(authService.registerOnboarding).toHaveBeenCalledWith(onboardingDto)
+      expect(result).toEqual(expectedResult)
     })
 
-    it('should handle errors during onboarding', async () => {
-      const onboardingDto: OnboardingDto = {
+    it('should handle onboarding errors', async () => {
+      const onboardingDto = {
         name: 'Test User',
         birthday: '1990-01-01',
-        institute: 'Test Institute',
-        instituteIdentifier: '12345'
+        institute: 'Test University',
+        instituteIdentifier: '12345',
+        token: 'jwt-token'
       }
-      const mockReq = {
-        user: {
-          _id: new Types.ObjectId()
-        }
-      }
-      mockRegistrationService.registerOnboarding.mockRejectedValue(new Error('Onboarding failed'))
 
-      await expect(controller.onboarding(onboardingDto, mockReq)).rejects.toThrow('Onboarding failed')
+      const error = new Error('Onboarding failed')
+
+      jest.spyOn(authService, 'registerOnboarding').mockRejectedValue(error)
+
+      await expect(controller.onboarding(onboardingDto)).rejects.toThrow(error)
     })
   })
 
   describe('onboardingOauth', () => {
-    it('should complete OAuth onboarding process', async () => {
-      const oauthOnboardingDto: OAuthOnboardingDto = {
-        username: 'testuser',
+    it('should throw UnauthorizedException if user status is not ONBOARDING_OAUTH', async () => {
+      const oauthOnboardingDto = {
         name: 'Test User',
         birthday: '1990-01-01',
-        institute: 'Test Institute',
-        instituteIdentifier: '12345'
+        institute: 'Test University',
+        instituteIdentifier: '12345',
+        token: 'jwt-token',
+        username: 'testuser'
       }
-      const mockReq = {
-        user: {
-          accountStatus: AccountStatus.ONBOARDING_OAUTH,
-          data: { email: 'test@example.com' }
-        }
-      }
-      const mockResponse = { token: 'oauth-onboarding-token' }
-      mockRegistrationService.registerOnboardingOauth.mockResolvedValue(mockResponse)
 
-      const result = await controller.onboardingOauth(oauthOnboardingDto, mockReq)
-
-      expect(result).toEqual(mockResponse)
-      expect(mockRegistrationService.registerOnboardingOauth).toHaveBeenCalledWith(
-        oauthOnboardingDto,
-        mockReq.user.data
-      )
-    })
-
-    it('should throw UnauthorizedException when not in ONBOARDING_OAUTH state', async () => {
-      const oauthOnboardingDto: OAuthOnboardingDto = {
-        username: 'testuser',
-        name: 'Test User',
-        birthday: '1990-01-01',
-        institute: 'Test Institute',
-        instituteIdentifier: '12345'
-      }
-      const mockReq = {
+      const req = {
         user: {
           accountStatus: AccountStatus.ACTIVE,
-          data: { email: 'test@example.com' }
+          data: { providerId: 'github-1234' }
         }
       }
 
-      await expect(controller.onboardingOauth(oauthOnboardingDto, mockReq)).rejects.toThrow(UnauthorizedException)
-      expect(mockRegistrationService.registerOnboardingOauth).not.toHaveBeenCalled()
+      await expect(controller.onboardingOauth(oauthOnboardingDto, req)).rejects.toThrow(UnauthorizedException)
     })
 
-    it('should handle errors during OAuth onboarding', async () => {
-      const oauthOnboardingDto: OAuthOnboardingDto = {
-        username: 'testuser',
+    it('should call authService.registerOnboardingOauth with correct parameters', async () => {
+      const oauthOnboardingDto = {
         name: 'Test User',
         birthday: '1990-01-01',
-        institute: 'Test Institute',
-        instituteIdentifier: '12345'
+        institute: 'Test University',
+        instituteIdentifier: '12345',
+        token: 'jwt-token',
+        username: 'testuser'
       }
-      const mockReq = {
+
+      const req = {
         user: {
           accountStatus: AccountStatus.ONBOARDING_OAUTH,
-          data: { email: 'test@example.com' }
+          data: { providerId: 'github-1234' }
         }
       }
-      mockRegistrationService.registerOnboardingOauth.mockRejectedValue(new Error('OAuth onboarding failed'))
 
-      await expect(controller.onboardingOauth(oauthOnboardingDto, mockReq)).rejects.toThrow('OAuth onboarding failed')
+      const expectedResult = { token: 'oauth-onboarded-token' }
+
+      jest.spyOn(authService, 'registerOnboardingOauth').mockResolvedValue(expectedResult)
+
+      const result = await controller.onboardingOauth(oauthOnboardingDto, req)
+
+      expect(authService.registerOnboardingOauth).toHaveBeenCalledWith(oauthOnboardingDto, req.user.data)
+      expect(result).toEqual(expectedResult)
+    })
+
+    it('should handle OAuth onboarding errors', async () => {
+      const oauthOnboardingDto = {
+        name: 'Test User',
+        birthday: '1990-01-01',
+        institute: 'Test University',
+        instituteIdentifier: '12345',
+        token: 'jwt-token',
+        username: 'testuser'
+      }
+
+      const req = {
+        user: {
+          accountStatus: AccountStatus.ONBOARDING_OAUTH,
+          data: { providerId: 'github-1234' }
+        }
+      }
+
+      const error = new Error('OAuth onboarding failed')
+
+      jest.spyOn(authService, 'registerOnboardingOauth').mockRejectedValue(error)
+
+      await expect(controller.onboardingOauth(oauthOnboardingDto, req)).rejects.toThrow(error)
     })
   })
 
   describe('refreshToken', () => {
-    it('should refresh token using valid refresh token from cookies', async () => {
-      const mockRefreshToken = 'valid-refresh-token'
-      const mockReq = {
-        cookies: {
-          'refresh-token': mockRefreshToken
-        }
-      }
-      const mockResponse = { token: 'new-auth-token' }
-      mockAuthService.refreshToken.mockResolvedValue(mockResponse)
+    it('should throw UnauthorizedException if refresh token is missing', async () => {
+      const req = { cookies: {} }
 
-      const result = await controller.refreshToken(mockReq)
-
-      expect(result).toEqual(mockResponse)
-      expect(mockAuthService.refreshToken).toHaveBeenCalledWith(mockRefreshToken)
+      await expect(controller.refreshToken(req)).rejects.toThrow(UnauthorizedException)
     })
 
-    it('should throw UnauthorizedException when refresh token is missing', async () => {
-      const mockReq = {
-        cookies: {} // No refresh token
+    it('should call authService.refreshToken with correct token', async () => {
+      const refreshToken = 'valid-refresh-token'
+      const req = {
+        cookies: { 'refresh-token': refreshToken }
       }
 
-      await expect(controller.refreshToken(mockReq)).rejects.toThrow(UnauthorizedException)
-      expect(mockAuthService.refreshToken).not.toHaveBeenCalled()
+      const expectedResult = { token: 'new-access-token' }
+
+      jest.spyOn(authService, 'refreshToken').mockResolvedValue(expectedResult)
+
+      const result = await controller.refreshToken(req)
+
+      expect(authService.refreshToken).toHaveBeenCalledWith(refreshToken)
+      expect(result).toEqual(expectedResult)
     })
 
-    it('should handle invalid refresh token', async () => {
-      const mockRefreshToken = 'invalid-refresh-token'
-      const mockReq = {
-        cookies: {
-          'refresh-token': mockRefreshToken
-        }
+    it('should handle token refresh errors', async () => {
+      const refreshToken = 'invalid-refresh-token'
+      const req = {
+        cookies: { 'refresh-token': refreshToken }
       }
-      mockAuthService.refreshToken.mockRejectedValue(new Error('Invalid refresh token'))
 
-      await expect(controller.refreshToken(mockReq)).rejects.toThrow('Invalid refresh token')
-    })
+      const error = new Error('Invalid refresh token')
 
-    it('should handle expired refresh token', async () => {
-      const mockRefreshToken = 'expired-refresh-token'
-      const mockReq = {
-        cookies: {
-          'refresh-token': mockRefreshToken
-        }
-      }
-      mockAuthService.refreshToken.mockRejectedValue(new UnauthorizedException('Refresh token expired'))
+      jest.spyOn(authService, 'refreshToken').mockRejectedValue(error)
 
-      await expect(controller.refreshToken(mockReq)).rejects.toThrow(UnauthorizedException)
+      await expect(controller.refreshToken(req)).rejects.toThrow(error)
     })
   })
 })

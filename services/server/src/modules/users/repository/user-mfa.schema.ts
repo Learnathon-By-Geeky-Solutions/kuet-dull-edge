@@ -1,21 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
 import * as bcrypt from 'bcrypt'
-import { IUserMFA, MFAType } from 'src/interfaces/users.interfaces'
+import { IUserMFA, MFAType } from '../../../interfaces/users.interfaces'
 
 @Schema({ timestamps: true })
 export class UserMFA extends Document implements IUserMFA {
-  @Prop({ type: Types.ObjectId, required: true, unique: true })
-  _id: Types.ObjectId
-
   @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
   userId: Types.ObjectId
 
   @Prop({ default: false })
   enabled: boolean
 
-  @Prop({ enum: MFAType, required: false })
-  type?: MFAType
+  @Prop({ type: String, enum: MFAType, required: false })
+  type: MFAType
 
   @Prop({ required: false })
   secret?: string
@@ -43,6 +40,7 @@ UserMFASchema.pre('save', async function (next) {
 
 UserMFASchema.methods.compareRecoveryCode = async function (code: string) {
   for (const hashedCode of this.recoveryCodes) {
+    console.log(`Comparing ${code} with ${hashedCode}`)
     if (await bcrypt.compare(code, hashedCode)) {
       return true
     }

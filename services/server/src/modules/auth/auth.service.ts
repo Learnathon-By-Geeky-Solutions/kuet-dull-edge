@@ -13,9 +13,7 @@ import { InjectConnection } from '@nestjs/mongoose'
 import * as speakeasy from 'speakeasy'
 import * as crypto from 'crypto'
 
-import { RegisterDto } from './dto/register.dto'
-import { OAuthOnboardingDto } from './dto/oauth-onboarding.dto'
-import { OnboardingDto } from './dto/onboarding.dto'
+import { LoginDto, RegisterDto, OnboardingDto, OAuthOnboardingDto, EmailVerifyDto } from './auth.dto'
 import { EmailVerificationRepository, RefreshTokenRepository } from './repository/auth.repository'
 import {
   UserAuthRepository,
@@ -33,21 +31,20 @@ export class AuthService {
     private readonly emailVerificationRepository: EmailVerificationRepository,
     private readonly userPeekRepository: UserPeekRepository,
     private readonly userDetailsRepository: UserDetailsRepository,
-    private readonly userMFARepository: UserMFARepository,
-    @InjectConnection() private readonly connection: Connection
+    private readonly userMFARepository: UserMFARepository
   ) {}
 
   /* Authentication */
 
-  async getAnonymousUser() {
-    return {
-      token: this.jwtService.sign({
-        _id: v4(),
+  getAnonymousToken(): string {
+    return this.jwtService.sign(
+      {
+        _id: null,
         accountStatus: AccountStatus.ANONYMOUS
-      })
-    }
+      },
+      { expiresIn: '1d' }
+    )
   }
-
   getToken(_id: Types.ObjectId, accountStatus: AccountStatus): string {
     return this.jwtService.sign({
       _id,
@@ -60,7 +57,7 @@ export class AuthService {
     const user = await this.userAuthRepository.findByEmailOrUsername('', username)
     if (!user) throw new UnauthorizedException('INVALID_CREDENTIALS')
 
-    if (!(await user.comparePassword(password))) throw new UnauthorizedException('Invalid credentials')
+    if (!(await user.comparePassword(password))) throw new UnauthorizedException('INVALID_CREDENTIALS')
 
     return {
       token: this.getToken(user._id, user.accountStatus),
@@ -74,9 +71,10 @@ export class AuthService {
 
     while (attempt < 5) {
       try {
-        token = this.jwtService.sign({ rtId: new Types.ObjectId(), userId }, { expiresIn: '30d' })
+        const rtId = new Types.ObjectId()
+        token = this.jwtService.sign({ rtId, userId }, { expiresIn: '30d' })
 
-        await this.refreshTokenRepository.createToken(userId, token)
+        await this.refreshTokenRepository.createToken(userId, rtId, token)
         return token
       } catch (error) {
         attempt++
@@ -85,8 +83,8 @@ export class AuthService {
         }
       }
     }
+    return token
   }
-
   async validateRefreshToken(userId: Types.ObjectId, rtId: Types.ObjectId, token: string): Promise<boolean> {
     const refreshToken = await this.refreshTokenRepository.findByUserAndTokenId(userId, rtId)
     if (!refreshToken) return false
@@ -132,7 +130,7 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     const decoded = this.jwtService.decode(refreshToken)
     const { userId, rtId } = decoded
-    const user = await this.userAuthRepository.findById(userId)
+    const user = await this.userAuthRepository.findById(userId as Types.ObjectId)
 
     if (!user) throw new UnauthorizedException('INVALID_REFRESH_TOKEN')
 
@@ -166,7 +164,7 @@ export class AuthService {
     this.sendVerificationEmail(email, verificationCode)
 
     const token = this.jwtService.sign({
-      userId: userAuth._id,
+      registerId: userAuth._id,
       accountStatus: userAuth.accountStatus
     })
 
@@ -228,8 +226,11 @@ export class AuthService {
     return true
   }
 
-  async verifyEmail(_id: Types.ObjectId, verificationCode: string): Promise<{ token: string }> {
-    // Check if userAuth exists and is in EMAIL_VERIFICATION status
+  async verifyEmail({ token, verificationCode }: EmailVerifyDto): Promise<{ token: string }> {
+    const _id = this.jwtService.decode(token).registerId
+    //check integrity of token
+    if (!_id) throw new BadRequestException('INVALID_TOKEN')
+    //check account status
     const userAuth = await this.userAuthRepository.findById(_id)
     if (!userAuth || userAuth.accountStatus !== AccountStatus.EMAIL_VERIFICATION)
       throw new BadRequestException('INVALID_ACCOUNT_STATUS')
@@ -251,7 +252,14 @@ export class AuthService {
     }
   }
 
-  async resendVerificationEmail(_id: Types.ObjectId): Promise<void> {
+  async resendVerificationEmail(token: string): Promise<{ success: boolean }> {
+    const _id = this.jwtService.decode(token).registerId
+    //check integrity of token
+    if (!_id) throw new BadRequestException('INVALID_TOKEN')
+    //check account status
+    const userAuth = await this.userAuthRepository.findById(_id)
+    if (!userAuth || userAuth.accountStatus !== AccountStatus.EMAIL_VERIFICATION)
+      throw new BadRequestException('INVALID_ACCOUNT_STATUS')
     // Check if email can be resent
     await this.canResendEmail(_id)
 
@@ -259,11 +267,11 @@ export class AuthService {
     const verificationCode = await this.createVerification(_id)
 
     // Send verification email
-    const userAuth = await this.userAuthRepository.findById(_id)
     this.sendVerificationEmail(userAuth.email, verificationCode)
+    return { success: true }
   }
 
-  private sendVerificationEmail(email: string, token: string): void {
+  sendVerificationEmail(email: string, token: string): void {
     if (process.env.NODE_ENV === 'dev') {
       console.log(`Verification token for ${email}: ${token}`)
     } else {
@@ -271,9 +279,12 @@ export class AuthService {
     }
   }
 
-  async registerOnboarding(userId: Types.ObjectId, user: OnboardingDto): Promise<{ token: string }> {
-    // validity checked in controller
+  async registerOnboarding(user: OnboardingDto): Promise<{ token: string }> {
+    // Check if userAuth exists and is in EMAIL_VERIFICATION status
+    const userId = this.jwtService.decode(user.token).userId
+    if (!userId) throw new BadRequestException('INVALID_TOKEN')
     const userAuth = await this.userAuthRepository.findById(userId)
+    if (!userAuth) throw new BadRequestException('USER_NOT_FOUND')
     // Check if userAuth's status is ONBOARDING
     if (userAuth.accountStatus !== AccountStatus.ONBOARDING) throw new BadRequestException('INVALID_ACCOUNT_STATUS')
 
@@ -312,7 +323,7 @@ export class AuthService {
       accountStatus: AccountStatus.ONBOARDING_OAUTH
     })
 
-    const userId = userAuth._id
+    const userId = userAuth._id as Types.ObjectId
 
     await this.userPeekRepository.createPeek(userId, {
       username: onboardingDto.username,
@@ -336,12 +347,17 @@ export class AuthService {
     }
   }
   /* MFA */
-  generateTOTPMFASecret(): { secret: string; uri: string } {
-    const base32Secret = speakeasy.generateSecret({ length: 20 })
-
+  // TODO: Controller should use guards to check if account is active
+  generateTOTPMFASecret(username: string): { secret: string; uri: string } {
+    const base32Secret = speakeasy.generateSecret({ name: 'ScholrFlow', issuer: 'ScholrFlow' })
+    const uri = speakeasy.otpauthURL({
+      secret: base32Secret.ascii,
+      label: `Schlorflow ${username}`, // TODO: use config
+      issuer: 'ScholrFlow'
+    })
     return {
       secret: base32Secret.base32,
-      uri: base32Secret.otpauth_url.replace('SecretKey', 'ScholrFlow')
+      uri: uri
     }
   }
   verifyTOTPMFAcode(secret: string, code: string): boolean {
@@ -380,8 +396,8 @@ export class AuthService {
         secret: email
       })
       return { secret: email, uri: '', mfaId: working._id }
-    } else if (type !== MFAType.TOTP) {
-      const { secret, uri } = this.generateTOTPMFASecret()
+    } else if (type === MFAType.TOTP) {
+      const { secret, uri } = this.generateTOTPMFASecret((await this.userAuthRepository.findById(userId)).username)
       const working = await this.userMFARepository.createMFA(userId, {
         enabled: false,
         type,
@@ -393,24 +409,21 @@ export class AuthService {
     }
   }
 
-  async verifyAndEnableMFA(
-    userId: Types.ObjectId,
-    code: string,
-    mfaId: Types.ObjectId
-  ): Promise<{ recoveryCodes: string[] }> {
+  async verifyAndEnableMFA(userId: string, code: string, mfaId: Types.ObjectId): Promise<{ recoveryCodes: string[] }> {
+    const _userId = new Types.ObjectId(userId)
     const userMfa = await this.userMFARepository.findById(mfaId)
     if (!userMfa) throw new BadRequestException('MFA_SETUP_NOT_INITIATED')
     if (userMfa.enabled) throw new BadRequestException('MFA_ALREADY_ENABLED')
     if (userMfa.userId.toString() !== userId.toString()) throw new BadRequestException('MFA_INVALID_USER')
     if (userMfa.type === MFAType.EMAIL) {
-      if (!(await this.verifyEmailMFACode(userId, code))) throw new BadRequestException('INVALID_CODE')
+      if (!(await this.verifyEmailMFACode(_userId, code))) throw new BadRequestException('INVALID_CODE')
     }
     if (userMfa.type === MFAType.TOTP) {
-      if (!this.verifyTOTPMFAcode(code, userMfa.secret)) throw new BadRequestException('INVALID_CODE')
+      if (!this.verifyTOTPMFAcode(userMfa.secret, code)) throw new BadRequestException('INVALID_CODE')
     }
     const recoveryCodes = Array.from({ length: 10 }, () => crypto.randomBytes(5).toString('hex').toUpperCase()) // TODO:use config
-    await this.userMFARepository.updateRecoveryCodes(userId, recoveryCodes)
-    await this.userMFARepository.enableMFA(userId)
+    await this.userMFARepository.updateRecoveryCodes(_userId, recoveryCodes)
+    await this.userMFARepository.enableMFA(mfaId)
     return { recoveryCodes }
   }
 
