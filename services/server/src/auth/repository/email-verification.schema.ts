@@ -1,12 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document } from 'mongoose'
+import { Document, Types } from 'mongoose'
+import { IEmailVerification } from '../../common/interfaces/auth.interfaces'
 import * as bcrypt from 'bcrypt'
-import { IEmailVerification } from '../../../interfaces/auth.interfaces'
 
 @Schema({ timestamps: true })
 export class EmailVerification extends Document implements IEmailVerification {
+  @Prop({ auto: true })
+  _id: Types.ObjectId
   @Prop({ required: true })
-  verificationCode: string
+  verificationCode: number
 
   @Prop({ default: Date.now, expires: 180 })
   createdAt: Date

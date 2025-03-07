@@ -1,25 +1,7 @@
-import { Exclude } from 'class-transformer'
 import { Document, Types } from 'mongoose'
+import { AccountStatus } from '../enums/account-status.enum'
+import { MFAType } from '../enums/mfa-type.enum'
 
-export enum AccountStatus {
-  ANONYMOUS = 'ANONYMOUS',
-  MFA_REQUIRED = 'MFA_REQUIRED',
-  EMAIL_VERIFICATION = 'EMAIL_VERIFICATION',
-  ONBOARDING = 'ONBOARDING',
-  ONBOARDING_OAUTH = 'ONBOARDING_OAUTH',
-  ACTIVE = 'ACTIVE',
-  LOCKED = 'LOCKED',
-  BANNED = 'BANNED',
-  TEMPBAN = 'TEMPBAN',
-  SOFT_DELETED = 'SOFT_DELETED'
-}
-
-export enum MFAType {
-  TOTP = 'totp',
-  EMAIL = 'email'
-}
-
-// Schema Interfaces
 export interface IUserAuth {
   _id: Types.ObjectId
   email: string

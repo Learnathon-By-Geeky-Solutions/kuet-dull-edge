@@ -9,7 +9,8 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule)
   app.enableVersioning({
     type: VersioningType.HEADER,
-    header: 'X-API-Version'
+    header: 'X-API-Version',
+    defaultVersion: '1'
   })
   app.use(cookieParser())
   const swaggerConfig = new DocumentBuilder()

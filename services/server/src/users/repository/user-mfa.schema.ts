@@ -1,11 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
 import * as bcrypt from 'bcrypt'
-import { IUserMFA, MFAType } from '../../../interfaces/users.interfaces'
-
+import { IMfaDocument } from '../../common/interfaces/mfa.interface'
+import { MFAType } from '../../common/enums/mfa-type.enum'
 @Schema({ timestamps: true })
-export class UserMFA extends Document implements IUserMFA {
-  @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
+export class UserMFA extends Document implements IMfaDocument {
+  @Prop({ type: Types.ObjectId, required: true, auto: true })
+  _id: Types.ObjectId
+  @Prop({ type: Types.ObjectId, required: true, ref: 'UserAuth' })
   userId: Types.ObjectId
 
   @Prop({ default: false })

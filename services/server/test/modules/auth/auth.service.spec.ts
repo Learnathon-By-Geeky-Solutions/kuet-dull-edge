@@ -8,7 +8,7 @@ import {
   UnauthorizedException
 } from '@nestjs/common'
 import { AuthService } from '../../../src/modules/auth/auth.service'
-import { AccountStatus } from '../../../src/interfaces/users.interfaces'
+import { AccountStatus } from '../../../src/common/interfaces/users.interfaces'
 import {
   EmailVerificationRepository,
   RefreshTokenRepository
@@ -16,10 +16,10 @@ import {
 import {
   UserAuthRepository,
   UserDetailsRepository,
-  UserPeekRepository,
-  UserMFARepository
+  UserMFARepository,
+  UserPeekRepository
 } from '../../../src/modules/users/repository/users.repository'
-import speakeasy from 'speakeasy'
+
 describe('AuthService', () => {
   let service: AuthService
   let jwtService: JwtService

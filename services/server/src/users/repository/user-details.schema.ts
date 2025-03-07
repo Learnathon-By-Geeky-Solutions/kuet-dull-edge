@@ -5,7 +5,7 @@ import { Types } from 'mongoose'
 
 @Schema({ timestamps: true })
 export class UserDetails extends Document implements IUserDetails {
-  @Prop({ required: true, type: Types.ObjectId, auto: true, unique: true, index: true })
+  @Prop({ required: true, type: Types.ObjectId, auto: true })
   _id: Types.ObjectId
 
   @Prop({ required: true })

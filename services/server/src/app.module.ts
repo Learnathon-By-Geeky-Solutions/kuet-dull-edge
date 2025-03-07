@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
-import { AuthModule } from './modules/auth/auth.module'
-import { UsersModule } from './modules/users/users.module'
-import { config } from './modules/config'
+import { AuthModule } from './auth/auth.module'
+import { UsersModule } from './users/users.module'
+import { config } from './config'
 import { JwtModule } from '@nestjs/jwt'
+import { MiddlewareConsumer } from '@nestjs/common/interfaces'
+import { ApiVersionMiddleware } from './middlewares/api-version.middleware'
 
 @Module({
   imports: [
@@ -12,10 +14,15 @@ import { JwtModule } from '@nestjs/jwt'
       secret: config._.jwt_secret,
       signOptions: { expiresIn: '15m' }
     }),
+
     AuthModule,
     UsersModule
   ],
   controllers: [],
   providers: []
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(ApiVersionMiddleware).forRoutes('*')
+  }
+}

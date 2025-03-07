@@ -1,7 +1,7 @@
 import { JwtService } from '@nestjs/jwt'
-import { AccountStatus, MFAType } from '../../interfaces/users.interfaces'
-import { v4 } from 'uuid'
-import { Types, Connection } from 'mongoose'
+import { AccountStatus } from '../common/enums/account-status.enum'
+import { config } from '../config'
+import { Types } from 'mongoose'
 import {
   BadRequestException,
   ConflictException,
@@ -9,11 +9,10 @@ import {
   InternalServerErrorException,
   UnauthorizedException
 } from '@nestjs/common'
-import { InjectConnection } from '@nestjs/mongoose'
 import * as speakeasy from 'speakeasy'
 import * as crypto from 'crypto'
 
-import { LoginDto, RegisterDto, OnboardingDto, OAuthOnboardingDto, EmailVerifyDto } from './auth.dto'
+import { RegisterDto, OnboardingDto, OAuthOnboardingDto, EmailVerifyDto, TokenResponseDto } from './auth.dto'
 import { EmailVerificationRepository, RefreshTokenRepository } from './repository/auth.repository'
 import {
   UserAuthRepository,
@@ -21,7 +20,7 @@ import {
   UserPeekRepository,
   UserMFARepository
 } from '../users/repository/users.repository'
-
+// TODO: Use transactions
 @Injectable()
 export class AuthService {
   constructor(
@@ -30,39 +29,53 @@ export class AuthService {
     private readonly refreshTokenRepository: RefreshTokenRepository,
     private readonly emailVerificationRepository: EmailVerificationRepository,
     private readonly userPeekRepository: UserPeekRepository,
-    private readonly userDetailsRepository: UserDetailsRepository,
-    private readonly userMFARepository: UserMFARepository
+    private readonly userDetailsRepository: UserDetailsRepository
   ) {}
-
-  /* Authentication */
-
-  getAnonymousToken(): string {
-    return this.jwtService.sign(
-      {
-        _id: null,
-        accountStatus: AccountStatus.ANONYMOUS
-      },
-      { expiresIn: '1d' }
-    )
+  getAnonymousToken(): TokenResponseDto {
+    return {
+      token: this.jwtService.sign(
+        {
+          _id: null,
+          accountStatus: AccountStatus.ANONYMOUS
+        },
+        { expiresIn: '1d' }
+      )
+    }
   }
+  /**
+   * Generates a JWT token for a user.
+   *
+   * @param _id - The MongoDB ObjectId of the user.
+   * @param accountStatus - The account status of the user.
+   * @returns A signed JWT token string containing the user's ID and account status.
+   */
   getToken(_id: Types.ObjectId, accountStatus: AccountStatus): string {
     return this.jwtService.sign({
       _id,
       accountStatus
     })
   }
-
+  async getRegisterToken(_id: Types.ObjectId, accountStatus: AccountStatus): Promise<string> {
+    return this.jwtService.sign({
+      registerId: _id,
+      accountStatus
+    })
+  }
   async validateUser(username: string, password: string): Promise<{ token: string; refreshToken: string }> {
     // TODO : MFA
     const user = await this.userAuthRepository.findByEmailOrUsername('', username)
     if (!user) throw new UnauthorizedException('INVALID_CREDENTIALS')
 
     if (!(await user.comparePassword(password))) throw new UnauthorizedException('INVALID_CREDENTIALS')
-
-    return {
-      token: this.getToken(user._id, user.accountStatus),
-      refreshToken: await this.generateRefreshToken(user._id)
-    }
+    if (
+      user.accountStatus === AccountStatus.EMAIL_VERIFICATION ||
+      user.accountStatus === AccountStatus.ONBOARDING_OAUTH ||
+      user.accountStatus === AccountStatus.ONBOARDING
+    )
+      return {
+        token: this.getToken(user._id, user.accountStatus),
+        refreshToken: await this.generateRefreshToken(user._id)
+      }
   }
 
   async generateRefreshToken(userId: Types.ObjectId): Promise<string> {
@@ -163,10 +176,7 @@ export class AuthService {
     // Send verification email
     this.sendVerificationEmail(email, verificationCode)
 
-    const token = this.jwtService.sign({
-      registerId: userAuth._id,
-      accountStatus: userAuth.accountStatus
-    })
+    const token = await this.getRegisterToken(userAuth._id, AccountStatus.EMAIL_VERIFICATION)
 
     return { token }
   }
@@ -245,10 +255,7 @@ export class AuthService {
     await this.userAuthRepository.updateAccountStatus(_id, AccountStatus.ONBOARDING)
 
     return {
-      token: this.jwtService.sign({
-        userId: _id,
-        accountStatus: AccountStatus.ONBOARDING
-      })
+      token: await this.getRegisterToken(_id, AccountStatus.ONBOARDING)
     }
   }
 
@@ -272,7 +279,7 @@ export class AuthService {
   }
 
   sendVerificationEmail(email: string, token: string): void {
-    if (process.env.NODE_ENV === 'dev') {
+    if (config._.mode === 'development') {
       console.log(`Verification token for ${email}: ${token}`)
     } else {
       // TODO Send email
@@ -280,7 +287,7 @@ export class AuthService {
   }
 
   async registerOnboarding(user: OnboardingDto): Promise<{ token: string }> {
-    // Check if userAuth exists and is in EMAIL_VERIFICATION status
+    // Check if userAuth exists
     const userId = this.jwtService.decode(user.token).userId
     if (!userId) throw new BadRequestException('INVALID_TOKEN')
     const userAuth = await this.userAuthRepository.findById(userId)
@@ -309,7 +316,6 @@ export class AuthService {
       })
     }
   }
-
   async registerOnboardingOauth(
     onboardingDto: OAuthOnboardingDto,
     { email, photo }: { email: string; photo: string }
@@ -345,120 +351,5 @@ export class AuthService {
         accountStatus: AccountStatus.ACTIVE
       })
     }
-  }
-  /* MFA */
-  // TODO: Controller should use guards to check if account is active
-  generateTOTPMFASecret(username: string): { secret: string; uri: string } {
-    const base32Secret = speakeasy.generateSecret({ name: 'ScholrFlow', issuer: 'ScholrFlow' })
-    const uri = speakeasy.otpauthURL({
-      secret: base32Secret.ascii,
-      label: `Schlorflow ${username}`, // TODO: use config
-      issuer: 'ScholrFlow'
-    })
-    return {
-      secret: base32Secret.base32,
-      uri: uri
-    }
-  }
-  verifyTOTPMFAcode(secret: string, code: string): boolean {
-    return speakeasy.totp.verify({
-      secret: secret,
-      encoding: 'base32',
-      token: code
-    })
-  }
-  async generateEmailMFASecret(userId: Types.ObjectId): Promise<string> {
-    const user = await this.userAuthRepository.findById(userId)
-    if (!user) throw new BadRequestException('USER_NOT_FOUND')
-    const email = user.email
-    const emailVerification = await this.createVerification(userId)
-    this.sendVerificationEmail(email, emailVerification)
-    return email
-  }
-
-  async verifyEmailMFACode(userId: Types.ObjectId, code: string): Promise<boolean> {
-    const secret = await this.emailVerificationRepository.findByUserId(userId)
-    return secret.compareVerificationCode(code)
-  }
-
-  async setupMFA(
-    //TODO: check if MFA already enabled of the same type, or allow a limited number of MFA types
-    userId: Types.ObjectId,
-    type: MFAType,
-    secret?: string
-  ): Promise<{ secret: string; uri: string; mfaId: Types.ObjectId }> {
-    if (type === MFAType.EMAIL) {
-      //user email is the secret
-      const email = await this.generateEmailMFASecret(userId)
-      const working = await this.userMFARepository.createMFA(userId, {
-        enabled: false,
-        type,
-        secret: email
-      })
-      return { secret: email, uri: '', mfaId: working._id }
-    } else if (type === MFAType.TOTP) {
-      const { secret, uri } = this.generateTOTPMFASecret((await this.userAuthRepository.findById(userId)).username)
-      const working = await this.userMFARepository.createMFA(userId, {
-        enabled: false,
-        type,
-        secret
-      })
-      return { secret, uri, mfaId: working._id }
-    } else {
-      throw new BadRequestException('INVALID_MFA_TYPE')
-    }
-  }
-
-  async verifyAndEnableMFA(userId: string, code: string, mfaId: Types.ObjectId): Promise<{ recoveryCodes: string[] }> {
-    const _userId = new Types.ObjectId(userId)
-    const userMfa = await this.userMFARepository.findById(mfaId)
-    if (!userMfa) throw new BadRequestException('MFA_SETUP_NOT_INITIATED')
-    if (userMfa.enabled) throw new BadRequestException('MFA_ALREADY_ENABLED')
-    if (userMfa.userId.toString() !== userId.toString()) throw new BadRequestException('MFA_INVALID_USER')
-    if (userMfa.type === MFAType.EMAIL) {
-      if (!(await this.verifyEmailMFACode(_userId, code))) throw new BadRequestException('INVALID_CODE')
-    }
-    if (userMfa.type === MFAType.TOTP) {
-      if (!this.verifyTOTPMFAcode(userMfa.secret, code)) throw new BadRequestException('INVALID_CODE')
-    }
-    const recoveryCodes = Array.from({ length: 10 }, () => crypto.randomBytes(5).toString('hex').toUpperCase()) // TODO:use config
-    await this.userMFARepository.updateRecoveryCodes(_userId, recoveryCodes)
-    await this.userMFARepository.enableMFA(mfaId)
-    return { recoveryCodes }
-  }
-
-  async enableMFA(userId: Types.ObjectId, type: MFAType, secret: string): Promise<{ recoveryCodes: string[] }> {
-    const recoveryCodes = Array.from({ length: 10 }, () => crypto.randomBytes(5).toString('hex').toUpperCase()) // TODO:use config
-    await this.userMFARepository.updateRecoveryCodes(userId, recoveryCodes)
-    return { recoveryCodes }
-  }
-
-  async verifyMFA(userId: Types.ObjectId, mfaId: Types.ObjectId, code: string): Promise<boolean> {
-    const userMfa = await this.userMFARepository.findOne({ _id: mfaId })
-    if (!userMfa) throw new BadRequestException('MFA_SETUP_NOT_INITIATED')
-    if (!userMfa.enabled) throw new BadRequestException('MFA_NOT_ENABLED')
-    if (userMfa.userId.toString() !== userId.toString()) throw new BadRequestException('MFA_INVALID_USER')
-    if (userMfa.type === MFAType.EMAIL) {
-      return await this.verifyEmailMFACode(userId, code)
-    } else if (userMfa.type === MFAType.TOTP) {
-      return this.verifyTOTPMFAcode(userMfa.secret, code)
-    }
-    return false
-  }
-
-  async getMFAStatus(userId: Types.ObjectId): Promise<{ type: MFAType; _id: Types.ObjectId }[]> {
-    const userMfa = await this.userMFARepository.findAll({ userId })
-    if (!userMfa) {
-      return []
-    }
-    return userMfa.filter(mfa => mfa.enabled).map(mfa => ({ type: mfa.type, _id: mfa._id }))
-  }
-
-  async disableMFA(userId: Types.ObjectId): Promise<void> {
-    await this.userMFARepository.disableMFA(userId)
-  }
-
-  async validateRecoveryCode(userId: Types.ObjectId, code: string): Promise<boolean> {
-    return this.userMFARepository.validateRecoveryCode(userId, code)
   }
 }

@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { AuthController } from '../../../src/modules/auth/auth.controller'
+import { AuthController } from '../../../src/modules/auth/controllers/auth.controller'
 import { AuthService } from '../../../src/modules/auth/auth.service'
 import { JwtAuthGuard } from '../../../src/guards/jwt-auth.guard'
 import { GoogleAuthGuard } from '../../../src/guards/google.guard'
 import { LocalAuthGuard } from '../../../src/guards/local-auth.guard'
 import { UnauthorizedException } from '@nestjs/common'
-import { AccountStatus } from '../../../src/interfaces/users.interfaces'
+import { AccountStatus } from '../../../src/common/interfaces/users.interfaces'
 import { config } from '../../../src/modules/config'
 
 describe('AuthController', () => {

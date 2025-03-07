@@ -13,32 +13,38 @@ import {
   VERSION_NEUTRAL
 } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { LoginDto, RegisterDto, OnboardingDto, OAuthOnboardingDto, TokenResponseDto, EmailVerifyDto } from './auth.dto'
 import { Throttle } from '@nestjs/throttler'
-import { EmptyBodyValidationPipe } from '../common/pipes/emptyBody'
-import { JwtAuthGuard } from '../../guards/jwt-auth.guard'
+import { AccountStatus } from '../common/enums/account-status.enum'
 import { AuthGuard } from '@nestjs/passport'
-import { AccountStatus, MFAType } from '../../interfaces/users.interfaces'
-import { GoogleAuthGuard } from '../../guards/google.guard'
+import { GoogleAuthGuard } from '../guards/google.guard'
+import { JwtAuthGuard } from '../guards/jwt-auth.guard'
+import { LoginDto } from './dto/login.dto'
+import { OAuthOnboardingDto } from './dto/oauth-onboarding.dto'
+import { OnboardingDto } from './dto/onboarding.dto'
+import { RegisterDto } from './dto/register.dto'
+import { TokenResponseDto } from '../common/dto/token-response.dto'
+import { EmailVerifyDto } from './dto/email-verify.dto'
+import { EmptyBodyValidationPipe } from '../common/pipes/emptyBody'
 
 import { config } from '../config'
-import { LocalAuthGuard } from '../../guards/local-auth.guard'
-import { Types } from 'mongoose'
+import { LocalAuthGuard } from '../guards/local-auth.guard'
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
   ApiBody,
   ApiCookieAuth,
   ApiExcludeEndpoint,
-  ApiHeader
+  ApiHeader,
+  ApiOperation,
+  ApiResponse,
+  ApiTags
 } from '@nestjs/swagger'
 
 @ApiTags('Authentication')
 @ApiHeader({
-  name: 'x-api-version',
-  required: true
+  name: 'X-API-Version',
+
+  description: 'API version',
+  example: '1'
 })
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
@@ -50,7 +56,7 @@ export class AuthController {
   @ApiResponse({ status: 429, description: 'Too many requests' })
   @Throttle({ default: { limit: 5, ttl: 3600 } })
   @UsePipes(EmptyBodyValidationPipe)
-  async anonymous(@Body() body: undefined) {
+  anonymous(): TokenResponseDto {
     return this.authService.getAnonymousToken()
   }
 
@@ -159,6 +165,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   @ApiBody({ type: RegisterDto })
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Throttle({
     default: {
@@ -183,6 +190,7 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'Username/ email taken' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   @ApiBody({ type: EmailVerifyDto })
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Throttle({
     default: {
@@ -263,83 +271,4 @@ export class AuthController {
     if (!refreshToken) throw new UnauthorizedException()
     return this.authService.refreshToken(refreshToken)
   }
-  // }
-  // @ApiOperation({ summary: 'Setup Multi-Factor Authentication' })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'MFA setup initiated',
-  //   type: MFASetupResponseDto
-  // })
-  // @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // @ApiBody({ type: MFASetupDto })
-  // @ApiBearerAuth()
-  // @Post('mfa/setup')
-  // @Post('mfa/setup')
-  // @UseGuards(JwtAuthGuard)
-  // async setupMFA(@Body() mfaSetupDto: MFASetupDto, @Request() req: any) {
-  //   if (req.user.accountStatus !== AccountStatus.ACTIVE) throw new UnauthorizedException()
-  //   return this.authService.setupMFA(req.user._id, mfaSetupDto.type as MFAType)
-  // }
-
-  // //TODO: Use specific guard for active accounts
-  // @ApiOperation({ summary: 'Verify and enable MFA' })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'MFA enabled',
-  //   type: MFAVerifyResponseDto
-  // })
-  // @ApiResponse({ status: 400, description: 'Invalid code or MFA setup' })
-  // @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // @ApiBody({ type: MFAVerifyDto })
-  // @ApiBearerAuth()
-  // @Post('mfa/verify')
-  // @UseGuards(JwtAuthGuard)
-  // async verifyAndEnableMFA(@Body() mfaVerifyDto: MFAVerifyDto, @Request() req: any) {
-  //   if (req.user.accountStatus !== AccountStatus.ACTIVE) throw new UnauthorizedException()
-
-  //   return this.authService.verifyAndEnableMFA(req.user._id, mfaVerifyDto.code, new Types.ObjectId(mfaVerifyDto.mfaId))
-  // }
-
-  // @ApiOperation({ summary: 'Get MFA status' })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'MFA status retrieved',
-  //   type: MFAStatusResponseDto
-  // })
-  // @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // @ApiBearerAuth()
-  // @Get('mfa/status')
-  // @UseGuards(JwtAuthGuard)
-  // async getMFAStatus(@Request() req: any) {
-  //   if (req.user.accountStatus !== AccountStatus.ACTIVE) throw new UnauthorizedException()
-  //   const mfaList = await this.authService.getMFAStatus(req.user._id)
-  //   return { mfaList }
-  // }
-
-  // @ApiOperation({ summary: 'Disable MFA' })
-  // @ApiResponse({ status: 200, description: 'MFA disabled' })
-  // @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // @ApiBearerAuth()
-  // @Post('mfa/disable')
-  // @UsePipes(EmptyBodyValidationPipe)
-  // @UseGuards(JwtAuthGuard)
-  // async disableMFA(@Body() body: undefined, @Request() req: any) {
-  //   if (req.user.accountStatus !== AccountStatus.ACTIVE) throw new UnauthorizedException() // TODO: use specific guard for active accounts
-  //   await this.authService.disableMFA(req.user._id)
-  //   return { success: true }
-  // }
-
-  // @ApiOperation({ summary: 'Use recovery code' })
-  // @ApiResponse({ status: 200, description: 'Recovery code validated' })
-  // @ApiResponse({ status: 400, description: 'Invalid recovery code' })
-  // @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // @ApiBody({ type: MFARecoveryDto })
-  // @ApiBearerAuth()
-  // @Post('mfa/recovery')
-  // @UseGuards(JwtAuthGuard)
-  // async validateRecoveryCode(@Body() mfaRecoveryDto: MFARecoveryDto, @Request() req: any) {
-  //   const isValid = await this.authService.validateRecoveryCode(req.user._id, mfaRecoveryDto.code)
-  //   if (!isValid) throw new UnauthorizedException('Invalid recovery code')
-  //   return { success: true }
-  // }
 }

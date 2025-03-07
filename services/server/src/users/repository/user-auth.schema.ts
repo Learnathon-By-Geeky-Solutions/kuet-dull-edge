@@ -6,7 +6,6 @@ import { Types } from 'mongoose'
 
 @Schema({ timestamps: true })
 export class UserAuth extends Document implements IUserAuth {
-  @Prop({ required: true, type: Types.ObjectId, auto: true, unique: true, index: true })
   _id: Types.ObjectId
   @Prop({ required: true, unique: true })
   email: string

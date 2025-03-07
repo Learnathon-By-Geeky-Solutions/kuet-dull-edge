@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model, Types, ClientSession } from 'mongoose'
+import { ClientSession, Model, Types } from 'mongoose'
 import { GenericRepository } from '../../common/generic.repository'
 import { EmailVerification } from './email-verification.schema'
 import { RefreshToken } from './refreshToken.schema'
@@ -25,7 +25,7 @@ export class EmailVerificationRepository extends GenericRepository<EmailVerifica
 
   async createVerification(
     userId: Types.ObjectId,
-    verificationCode: string,
+    verificationCode: number,
     session?: ClientSession
   ): Promise<EmailVerification | null> {
     return this.create(
