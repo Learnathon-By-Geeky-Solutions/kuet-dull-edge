@@ -3,10 +3,12 @@ import { BadRequestException } from '@nestjs/common/exceptions/bad-request.excep
 import { Types } from 'mongoose'
 import * as speakeasy from 'speakeasy'
 import * as crypto from 'crypto'
-import { MFAType } from '../../common/enums/mfa-type.enum'
-import { UserAuthRepository, UserMFARepository } from '../../users/repository/users.repository'
-import { EmailVerificationRepository } from '../repository/auth.repository'
-import { AuthService } from '../auth.service'
+import { MFAType } from '../common/enums/mfa-type.enum'
+import { UserAuthRepository, UserMFARepository } from '../users/repository/users.repository'
+import { EmailVerificationRepository } from '../auth/repository/auth.repository'
+import { AuthService } from '../auth/auth.service'
+import { IMfaStatusResponse } from 'src/common/interfaces/mfa.interface'
+
 @Injectable()
 export class MfaService {
   constructor(
@@ -15,6 +17,8 @@ export class MfaService {
     private readonly userMFARepository: UserMFARepository,
     private readonly emailVerificationRepository: EmailVerificationRepository
   ) {}
+
+  // TODO: Move emailVerification to this service
   // TODO: Controller should use guards to check if account is active
   generateTOTPMFASecret(username: string): { secret: string; uri: string } {
     const base32Secret = speakeasy.generateSecret({ name: 'ScholrFlow', issuer: 'ScholrFlow' })
@@ -28,13 +32,15 @@ export class MfaService {
       uri: uri
     }
   }
-  verifyTOTPMFAcode(secret: string, code: string): boolean {
+
+  verifyTOTPMFAcode(secret: string, code: number): boolean {
     return speakeasy.totp.verify({
       secret: secret,
       encoding: 'base32',
-      token: code
+      token: code.toString()
     })
   }
+
   async generateEmailMFASecret(userId: Types.ObjectId): Promise<string> {
     const user = await this.userAuthRepository.findById(userId)
     if (!user) throw new BadRequestException('USER_NOT_FOUND')
@@ -44,7 +50,7 @@ export class MfaService {
     return email
   }
 
-  async verifyEmailMFACode(userId: Types.ObjectId, code: string): Promise<boolean> {
+  async verifyEmailMFACode(userId: Types.ObjectId, code: number): Promise<boolean> {
     const secret = await this.emailVerificationRepository.findByUserId(userId)
     return secret.compareVerificationCode(code)
   }
@@ -77,7 +83,7 @@ export class MfaService {
     }
   }
 
-  async verifyAndEnableMFA(userId: string, code: string, mfaId: Types.ObjectId): Promise<{ recoveryCodes: string[] }> {
+  async verifyAndEnableMFA(userId: string, code: number, mfaId: Types.ObjectId): Promise<{ recoveryCodes: string[] }> {
     const _userId = new Types.ObjectId(userId)
     const userMfa = await this.userMFARepository.findById(mfaId)
     if (!userMfa) throw new BadRequestException('MFA_SETUP_NOT_INITIATED')
@@ -101,7 +107,7 @@ export class MfaService {
     return { recoveryCodes }
   }
 
-  async verifyMFA(userId: Types.ObjectId, mfaId: Types.ObjectId, code: string): Promise<boolean> {
+  async verifyMFA(userId: Types.ObjectId, mfaId: Types.ObjectId, code: number): Promise<boolean> {
     const userMfa = await this.userMFARepository.findOne({ _id: mfaId })
     if (!userMfa) throw new BadRequestException('MFA_SETUP_NOT_INITIATED')
     if (!userMfa.enabled) throw new BadRequestException('MFA_NOT_ENABLED')
@@ -114,12 +120,12 @@ export class MfaService {
     return false
   }
 
-  async getMFAStatus(userId: Types.ObjectId): Promise<{ type: MFAType; _id: Types.ObjectId }[]> {
+  async getMFAStatus(userId: Types.ObjectId): Promise<IMfaStatusResponse | null> {
     const userMfa = await this.userMFARepository.findAll({ userId })
     if (!userMfa) {
-      return []
+      return null
     }
-    return userMfa.filter(mfa => mfa.enabled).map(mfa => ({ type: mfa.type, _id: mfa._id }))
+    return { mfaList: userMfa.filter(mfa => mfa.enabled).map(mfa => ({ type: mfa.type, _id: mfa._id })) }
   }
 
   async disableMFA(userId: Types.ObjectId): Promise<void> {

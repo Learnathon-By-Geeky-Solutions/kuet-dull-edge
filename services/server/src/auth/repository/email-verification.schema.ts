@@ -16,7 +16,7 @@ export class EmailVerification extends Document implements IEmailVerification {
   @Prop({ default: 0 })
   tries: number
 
-  compareVerificationCode: (verificationCode: string) => Promise<boolean>
+  compareVerificationCode: (verificationCode: number) => Promise<boolean>
 }
 
 export const EmailVerificationSchema = SchemaFactory.createForClass(EmailVerification)

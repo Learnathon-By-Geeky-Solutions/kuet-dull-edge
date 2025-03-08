@@ -1,13 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { MongoMemoryServer } from 'mongodb-memory-server'
-import { Connection, Model, Types, connect } from 'mongoose'
+import { connect, Connection, Model, Schema, Types } from 'mongoose'
 import { getModelToken } from '@nestjs/mongoose'
-import {
-  EmailVerificationRepository,
-  RefreshTokenRepository
-} from '../../../src/modules/auth/repository/auth.repository'
-import { EmailVerification } from '../../../src/modules/auth/repository/email-verification.schema'
-import { RefreshToken } from '../../../src/modules/auth/repository/refreshToken.schema'
+import { EmailVerification } from '../../../src/auth/repository/email-verification.schema'
+import { RefreshToken } from '../../../src/auth/repository/refreshToken.schema'
+import { EmailVerificationRepository, RefreshTokenRepository } from '../../../src/auth/repository/auth.repository'
 
 describe('Auth Repository Tests', () => {
   let mongod: MongoMemoryServer
@@ -24,7 +21,7 @@ describe('Auth Repository Tests', () => {
 
     emailVerificationModel = mongoConnection.model<EmailVerification>(
       'EmailVerification',
-      new (require('mongoose').Schema)({
+      new Schema({
         _id: Types.ObjectId,
         verificationCode: String,
         createdAt: { type: Date, default: Date.now, expires: '15m' }
@@ -33,7 +30,7 @@ describe('Auth Repository Tests', () => {
 
     refreshTokenModel = mongoConnection.model<RefreshToken>(
       'RefreshToken',
-      new (require('mongoose').Schema)({
+      new Schema({
         _id: Types.ObjectId,
         userId: Types.ObjectId,
         tokenHash: String,
@@ -73,7 +70,7 @@ describe('Auth Repository Tests', () => {
   describe('EmailVerificationRepository', () => {
     it('should create a verification record', async () => {
       const userId = new Types.ObjectId()
-      const verificationCode = '123456'
+      const verificationCode = 123456
 
       const result = await emailVerificationRepository.createVerification(userId, verificationCode)
 
@@ -84,7 +81,7 @@ describe('Auth Repository Tests', () => {
 
     it('should find verification by user ID', async () => {
       const userId = new Types.ObjectId()
-      const verificationCode = '123456'
+      const verificationCode = 123456
 
       await emailVerificationRepository.createVerification(userId, verificationCode)
       const found = await emailVerificationRepository.findByUserId(userId)
@@ -95,7 +92,7 @@ describe('Auth Repository Tests', () => {
 
     it('should delete verification by user ID', async () => {
       const userId = new Types.ObjectId()
-      const verificationCode = '123456'
+      const verificationCode = 123456
 
       await emailVerificationRepository.createVerification(userId, verificationCode)
       const deleteResult = await emailVerificationRepository.deleteByUserId(userId)
@@ -165,8 +162,8 @@ describe('Auth Repository Tests', () => {
   describe('EmailVerificationRepository - Edge Cases', () => {
     it('should handle creating verification with same userId by replacing old record', async () => {
       const userId = new Types.ObjectId()
-      const code1 = '123456'
-      const code2 = '654321'
+      const code1 = 123456
+      const code2 = 654321
 
       await emailVerificationRepository.createVerification(userId, code1)
       await emailVerificationRepository.createVerification(userId, code2)

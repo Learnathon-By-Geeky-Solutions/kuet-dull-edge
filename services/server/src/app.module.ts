@@ -6,6 +6,7 @@ import { config } from './config'
 import { JwtModule } from '@nestjs/jwt'
 import { MiddlewareConsumer } from '@nestjs/common/interfaces'
 import { ApiVersionMiddleware } from './middlewares/api-version.middleware'
+import { MfaModule } from './mfa/mfa.module'
 
 @Module({
   imports: [
@@ -16,10 +17,12 @@ import { ApiVersionMiddleware } from './middlewares/api-version.middleware'
     }),
 
     AuthModule,
-    UsersModule
+    UsersModule,
+    MfaModule
   ],
   controllers: [],
-  providers: []
+  providers: [],
+  exports: [MfaModule]
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

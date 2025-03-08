@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
-import { MfaModule } from './mfa/mfa.module'
 
 import { UsersModule } from '../users/users.module'
 import { config } from '../config'
@@ -28,8 +27,7 @@ import { LocalStrategy } from './strategies/local.strategy'
       global: true,
       secret: config._.jwt_secret,
       signOptions: { expiresIn: '1d' }
-    }),
-    MfaModule
+    })
   ],
   controllers: [AuthController],
   providers: [
@@ -41,6 +39,6 @@ import { LocalStrategy } from './strategies/local.strategy'
     EmailVerificationRepository,
     RefreshTokenRepository
   ],
-  exports: [JwtModule, EmailVerificationRepository, RefreshTokenRepository, MfaModule]
+  exports: [JwtModule, EmailVerificationRepository, RefreshTokenRepository, AuthService]
 })
 export class AuthModule {}

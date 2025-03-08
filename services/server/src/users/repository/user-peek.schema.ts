@@ -1,8 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document } from 'mongoose'
-
+import { Types } from 'mongoose'
+import { IUserPeek } from 'src/common/interfaces/users.interfaces'
 @Schema({ timestamps: true })
-export class UserPeek extends Document {
+export class UserPeek extends Document implements IUserPeek {
+  @Prop({ required: true, type: Types.ObjectId, auto: true })
+  _id: Types.ObjectId
   @Prop({ required: true })
   name: string
 
@@ -16,7 +19,4 @@ export class UserPeek extends Document {
 export const UserPeekSchema = SchemaFactory.createForClass(UserPeek)
 
 // Indexes
-UserPeekSchema.index(
-  { name: 1 },
-  { unique: true, collation: { locale: 'en', strength: 2 } }
-)
+UserPeekSchema.index({ name: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } })

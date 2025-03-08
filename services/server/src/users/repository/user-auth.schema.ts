@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document } from 'mongoose'
 import * as bcrypt from 'bcrypt'
-import { AccountStatus, IUserAuth } from '../../../interfaces/users.interfaces'
+import { IUserAuth } from '../../common/interfaces/users.interfaces'
+import { AccountStatus } from '../../common/enums/account-status.enum'
 import { Types } from 'mongoose'
 
 @Schema({ timestamps: true })

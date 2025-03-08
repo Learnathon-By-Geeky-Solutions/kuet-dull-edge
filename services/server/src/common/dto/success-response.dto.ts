@@ -3,8 +3,7 @@ import { ISuccessResponse } from '../interfaces/mfa.interface'
 
 export class SuccessResponseDto implements ISuccessResponse {
   @ApiProperty({
-    description: 'Operation success status',
-    example: true
+    description: 'Operation success status'
   })
   success: boolean
 }

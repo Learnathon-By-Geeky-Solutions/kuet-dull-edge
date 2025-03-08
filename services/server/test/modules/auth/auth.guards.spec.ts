@@ -1,14 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing'
-import { ExecutionContext, UnauthorizedException, BadRequestException, HttpException } from '@nestjs/common'
-import { JwtAuthGuard, JwtAccountGuard } from '../../../src/guards/jwt-auth.guard'
-import { LocalAuthGuard } from '../../../src/guards/local-auth.guard'
-import { GoogleAuthGuard } from '../../../src/guards/google.guard'
-import { GithubGuard } from '../../../src/guards/github.guard'
-import { McaptchaGuard } from '../../../src/guards/captcha.guard'
+import { ExecutionContext } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
-import { config } from '../../../src/modules/config'
 import axios from 'axios'
-import { firstValueFrom, Observable, of } from 'rxjs'
+import { GithubGuard } from '../../../src/guards/github.guard'
+import { JwtAccountGuard } from '../../../src/guards/jwt-auth.guard'
+import { GoogleAuthGuard } from '../../../src/guards/google.guard'
 
 // Mock for axios
 jest.mock('axios')

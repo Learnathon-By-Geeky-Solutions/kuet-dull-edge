@@ -23,6 +23,7 @@ export interface IMfaStatus {
   type: MFAType
   _id: Types.ObjectId
 }
+
 export interface IMfaStatusResponse {
   mfaList: IMfaStatus[]
 }
@@ -38,11 +39,6 @@ export interface IMfaEnableResult {
 
 export interface IMfaRecovery {
   code: string
-}
-
-export interface IMfaVerifyCode {
-  code: string
-  mfaId: Types.ObjectId
 }
 
 export interface ISuccessResponse {

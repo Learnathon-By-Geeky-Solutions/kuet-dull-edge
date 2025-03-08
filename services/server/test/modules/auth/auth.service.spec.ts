@@ -7,18 +7,15 @@ import {
   InternalServerErrorException,
   UnauthorizedException
 } from '@nestjs/common'
-import { AuthService } from '../../../src/modules/auth/auth.service'
-import { AccountStatus } from '../../../src/common/interfaces/users.interfaces'
-import {
-  EmailVerificationRepository,
-  RefreshTokenRepository
-} from '../../../src/modules/auth/repository/auth.repository'
+import { AuthService } from '../../../src/auth/auth.service'
+import { AccountStatus } from '../../../src/common/enums/account-status.enum'
 import {
   UserAuthRepository,
   UserDetailsRepository,
   UserMFARepository,
   UserPeekRepository
-} from '../../../src/modules/users/repository/users.repository'
+} from '../../../src/users/repository/users.repository'
+import { EmailVerificationRepository, RefreshTokenRepository } from '../../../src/auth/repository/auth.repository'
 
 describe('AuthService', () => {
   let service: AuthService
