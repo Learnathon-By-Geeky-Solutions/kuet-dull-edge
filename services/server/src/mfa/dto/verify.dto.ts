@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsString, IsNotEmpty, IsMongoId, IsNumber, Min, Max } from 'class-validator'
+import { IsMongoId, IsNotEmpty, IsNumber, Max, Min } from 'class-validator'
 import { Types } from 'mongoose'
 import { IMfaVerification } from 'src/common/interfaces/mfa.interface'
 
@@ -10,7 +10,7 @@ export class MfaVerifyDto implements IMfaVerification {
   })
   @IsNumber()
   @IsNotEmpty()
-  @Min(100000)
+  @Min(0)
   @Max(999999)
   code: number
 

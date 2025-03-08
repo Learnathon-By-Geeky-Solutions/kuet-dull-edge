@@ -1,6 +1,7 @@
-import { ILogin } from '../../common/interfaces/auth.interfaces'
+import { ILogin } from '../../common/interfaces'
 import { ApiProperty } from '@nestjs/swagger'
-import { IsString, IsNotEmpty, MinLength, MaxLength, Matches, Max } from 'class-validator'
+import { IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator'
+
 export class LoginDto implements ILogin {
   @ApiProperty({
     description: 'Username of the user',
@@ -16,6 +17,7 @@ export class LoginDto implements ILogin {
 
   @ApiProperty({
     description: 'Password of the user',
+    example: 'Password123!',
     minLength: 8,
     maxLength: 64,
     pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,64}$'

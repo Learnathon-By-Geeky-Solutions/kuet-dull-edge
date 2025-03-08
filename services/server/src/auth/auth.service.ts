@@ -1,5 +1,5 @@
 import { JwtService } from '@nestjs/jwt'
-import { AccountStatus } from '../common/enums/account-status.enum'
+import { AccountStatus } from '../common/enums'
 import { config } from '../config'
 import { Types } from 'mongoose'
 import {
@@ -9,17 +9,20 @@ import {
   InternalServerErrorException,
   UnauthorizedException
 } from '@nestjs/common'
-import * as speakeasy from 'speakeasy'
 import * as crypto from 'crypto'
 
-import { RegisterDto, OnboardingDto, OAuthOnboardingDto, EmailVerifyDto, TokenResponseDto } from './auth.dto'
-import { EmailVerificationRepository, RefreshTokenRepository } from './repository/auth.repository'
+import { EmailVerifyDto, OAuthOnboardingDto, OnboardingDto, RegisterDto } from './dto'
+import { TokenResponseDto } from '../common/dto/token-response.dto'
+import {
+  EmailVerificationRepository,
+  RefreshTokenRepository
+} from './repository/auth.repository'
 import {
   UserAuthRepository,
   UserDetailsRepository,
-  UserPeekRepository,
-  UserMFARepository
+  UserPeekRepository
 } from '../users/repository/users.repository'
+
 // TODO: Use transactions
 @Injectable()
 export class AuthService {
@@ -31,6 +34,7 @@ export class AuthService {
     private readonly userPeekRepository: UserPeekRepository,
     private readonly userDetailsRepository: UserDetailsRepository
   ) {}
+
   getAnonymousToken(): TokenResponseDto {
     return {
       token: this.jwtService.sign(
@@ -42,6 +46,7 @@ export class AuthService {
       )
     }
   }
+
   /**
    * Generates a JWT token for a user.
    *
@@ -55,27 +60,42 @@ export class AuthService {
       accountStatus
     })
   }
-  async getRegisterToken(_id: Types.ObjectId, accountStatus: AccountStatus): Promise<string> {
+
+  async getRegisterToken(
+    _id: Types.ObjectId,
+    accountStatus: AccountStatus
+  ): Promise<string> {
     return this.jwtService.sign({
       registerId: _id,
       accountStatus
     })
   }
-  async validateUser(username: string, password: string): Promise<{ token: string; refreshToken: string }> {
+
+  async validateUser(
+    username: string,
+    password: string
+  ): Promise<{ token: string; refreshToken: string }> {
     // TODO : MFA
     const user = await this.userAuthRepository.findByEmailOrUsername('', username)
     if (!user) throw new UnauthorizedException('INVALID_CREDENTIALS')
 
-    if (!(await user.comparePassword(password))) throw new UnauthorizedException('INVALID_CREDENTIALS')
+    if (!(await user.comparePassword(password)))
+      throw new UnauthorizedException('INVALID_CREDENTIALS')
     if (
       user.accountStatus === AccountStatus.EMAIL_VERIFICATION ||
       user.accountStatus === AccountStatus.ONBOARDING_OAUTH ||
       user.accountStatus === AccountStatus.ONBOARDING
     )
       return {
-        token: this.getToken(user._id, user.accountStatus),
-        refreshToken: await this.generateRefreshToken(user._id)
+        token: this.jwtService.sign({
+          registerId: user._id,
+          accountStatus: user.accountStatus
+        })
       }
+    return {
+      token: this.getToken(user._id, user.accountStatus),
+      refreshToken: await this.generateRefreshToken(user._id)
+    }
   }
 
   async generateRefreshToken(userId: Types.ObjectId): Promise<string> {
@@ -98,14 +118,29 @@ export class AuthService {
     }
     return token
   }
-  async validateRefreshToken(userId: Types.ObjectId, rtId: Types.ObjectId, token: string): Promise<boolean> {
-    const refreshToken = await this.refreshTokenRepository.findByUserAndTokenId(userId, rtId)
+
+  async validateRefreshToken(
+    userId: Types.ObjectId,
+    rtId: Types.ObjectId,
+    token: string
+  ): Promise<boolean> {
+    const refreshToken = await this.refreshTokenRepository.findByUserAndTokenId(
+      userId,
+      rtId
+    )
     if (!refreshToken) return false
     return await refreshToken.compareToken(token)
   }
 
-  async deleteRefreshToken(userId: Types.ObjectId, rtId: Types.ObjectId, token: string): Promise<void> {
-    const refreshToken = await this.refreshTokenRepository.findByUserAndTokenId(userId, rtId)
+  async deleteRefreshToken(
+    userId: Types.ObjectId,
+    rtId: Types.ObjectId,
+    token: string
+  ): Promise<void> {
+    const refreshToken = await this.refreshTokenRepository.findByUserAndTokenId(
+      userId,
+      rtId
+    )
     if (!refreshToken) throw new UnauthorizedException('REFRESH_TOKEN_NOT_FOUND')
 
     const isValid = await refreshToken.compareToken(token)
@@ -154,9 +189,17 @@ export class AuthService {
       token: this.getToken(user._id, user.accountStatus)
     }
   }
+
   /* Registration */
-  async registerLocal({ username, password, email }: RegisterDto): Promise<{ token: string }> {
-    const existingUser = await this.userAuthRepository.findByEmailOrUsername(email, username)
+  async registerLocal({
+    username,
+    password,
+    email
+  }: RegisterDto): Promise<{ token: string }> {
+    const existingUser = await this.userAuthRepository.findByEmailOrUsername(
+      email,
+      username
+    )
     if (existingUser) throw new ConflictException('USER_EXISTS')
 
     const userAuth = await this.userAuthRepository.createUser({
@@ -176,28 +219,32 @@ export class AuthService {
     // Send verification email
     this.sendVerificationEmail(email, verificationCode)
 
-    const token = await this.getRegisterToken(userAuth._id, AccountStatus.EMAIL_VERIFICATION)
+    const token = await this.getRegisterToken(
+      userAuth._id,
+      AccountStatus.EMAIL_VERIFICATION
+    )
 
     return { token }
   }
 
-  async createVerification(userId: Types.ObjectId): Promise<string> {
+  async createVerification(userId: Types.ObjectId): Promise<number> {
     // Delete any existing verification
     await this.emailVerificationRepository.deleteByUserId(userId)
 
     // Generate 6 digit verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
+    const verificationCode = Math.floor(100000 + Math.random() * 900000)
 
     try {
       await this.emailVerificationRepository.createVerification(userId, verificationCode)
       return verificationCode
     } catch (error) {
       // TODO : Log error
+      if (config._.mode === 'development') console.error(error)
       throw new InternalServerErrorException('EMAIL_VERIFICATION_SAVE_ERROR')
     }
   }
 
-  async verifyCode(userId: Types.ObjectId, verificationCode: string): Promise<boolean> {
+  async verifyCode(userId: Types.ObjectId, verificationCode: number): Promise<boolean> {
     const emailVerification = await this.emailVerificationRepository.findByUserId(userId)
 
     if (!emailVerification) {
@@ -211,6 +258,7 @@ export class AuthService {
       try {
         await emailVerification.save()
       } catch (error) {
+        if (config._.mode === 'development') console.error(error)
         throw new InternalServerErrorException('ERROR')
       }
 
@@ -236,7 +284,10 @@ export class AuthService {
     return true
   }
 
-  async verifyEmail({ token, verificationCode }: EmailVerifyDto): Promise<{ token: string }> {
+  async verifyEmail({
+    token,
+    verificationCode
+  }: EmailVerifyDto): Promise<{ token: string }> {
     const _id = this.jwtService.decode(token).registerId
     //check integrity of token
     if (!_id) throw new BadRequestException('INVALID_TOKEN')
@@ -278,7 +329,7 @@ export class AuthService {
     return { success: true }
   }
 
-  sendVerificationEmail(email: string, token: string): void {
+  sendVerificationEmail(email: string, token: number): void {
     if (config._.mode === 'development') {
       console.log(`Verification token for ${email}: ${token}`)
     } else {
@@ -293,7 +344,8 @@ export class AuthService {
     const userAuth = await this.userAuthRepository.findById(userId)
     if (!userAuth) throw new BadRequestException('USER_NOT_FOUND')
     // Check if userAuth's status is ONBOARDING
-    if (userAuth.accountStatus !== AccountStatus.ONBOARDING) throw new BadRequestException('INVALID_ACCOUNT_STATUS')
+    if (userAuth.accountStatus !== AccountStatus.ONBOARDING)
+      throw new BadRequestException('INVALID_ACCOUNT_STATUS')
 
     await this.userPeekRepository.createPeek(userId, {
       username: userAuth.username,
@@ -316,6 +368,7 @@ export class AuthService {
       })
     }
   }
+
   async registerOnboardingOauth(
     onboardingDto: OAuthOnboardingDto,
     { email, photo }: { email: string; photo: string }
@@ -329,7 +382,7 @@ export class AuthService {
       accountStatus: AccountStatus.ONBOARDING_OAUTH
     })
 
-    const userId = userAuth._id as Types.ObjectId
+    const userId = userAuth._id
 
     await this.userPeekRepository.createPeek(userId, {
       username: onboardingDto.username,

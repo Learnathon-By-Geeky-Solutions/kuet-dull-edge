@@ -68,6 +68,4 @@ configuration.captchaProvidersList = Object.keys(configuration.captchaProviders)
 configuration._.mongo_uri =
   configuration._.mode == 'dev' ? env.DEV_MONGO_URI : env.MONGO_URI
 configuration._.config_mongo_uri =
-  configuration._.mode == 'dev'
-    ? env.DEV_CONFIG_MONGO_URI
-    : env.CONFIG_MONGO_URI
+  configuration._.mode == 'dev' ? env.DEV_CONFIG_MONGO_URI : env.CONFIG_MONGO_URI

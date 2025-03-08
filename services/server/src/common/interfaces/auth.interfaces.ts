@@ -1,4 +1,5 @@
 import { Types } from 'mongoose'
+import { IUserDetails } from './users.interfaces'
 
 export interface IToken {
   token: string
@@ -15,6 +16,19 @@ export interface IRegister {
   email: string
 }
 
+export interface IUsernameCheck {
+  username: string
+}
+
+export interface IOnboarding extends IToken, Omit<IUserDetails, '_id'> {}
+
+export interface IOauthOnboarding extends IOnboarding, IUsernameCheck {}
+
+export interface IEmailVerify {
+  token: string
+  verificationCode: number
+}
+
 // Schema
 
 export interface IEmailVerification {
@@ -22,4 +36,12 @@ export interface IEmailVerification {
   verificationCode: number
   createdAt: Date
   tries: number
+}
+
+export interface IRefreshToken {
+  _id: Types.ObjectId
+  userId: Types.ObjectId
+  tokenHash: string
+  createdAt: Date
+  compareToken: (token: string) => Promise<boolean>
 }

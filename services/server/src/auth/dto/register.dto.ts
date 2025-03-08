@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, Matches } from 'class-validator'
-import { IRegister } from 'src/common/interfaces/auth.interfaces'
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength
+} from 'class-validator'
+import { IRegister } from '../../common/interfaces/'
 
 export class RegisterDto implements IRegister {
   @ApiProperty({

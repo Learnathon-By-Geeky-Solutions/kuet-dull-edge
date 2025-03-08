@@ -2,7 +2,7 @@ import { BadRequestException, ExecutionContext, Injectable } from '@nestjs/commo
 import { AuthGuard } from '@nestjs/passport'
 import { plainToClass } from 'class-transformer'
 import { validate } from 'class-validator'
-import { LoginDto } from '../modules/auth/auth.dto'
+import { LoginDto } from '../auth/dto'
 import { Request } from 'express'
 import { firstValueFrom } from 'rxjs'
 
@@ -12,7 +12,13 @@ export class LocalAuthGuard extends AuthGuard('local') {
     super()
   }
 
-  handleRequest<TUser = any>(err: any, user: any, info: any, context: ExecutionContext, status?: any): TUser {
+  handleRequest<TUser = any>(
+    err: any,
+    user: any,
+    info: any,
+    context: ExecutionContext,
+    status?: any
+  ): TUser {
     const req = context.switchToHttp().getRequest()
     req.userData = user
     return user

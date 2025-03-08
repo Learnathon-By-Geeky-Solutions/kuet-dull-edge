@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsNotEmpty, IsString, MinLength, MaxLength, Matches } from 'class-validator'
+import { IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator'
+import { IUsernameCheck } from '../../common/interfaces'
 
-export class UsernameCheckDto {
+export class UsernameCheckDto implements IUsernameCheck {
   @ApiProperty({
     description: 'Username for OAuth onboarding',
     example: 'john_doe',

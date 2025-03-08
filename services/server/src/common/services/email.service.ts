@@ -18,7 +18,12 @@ export class EmailService {
     })
   }
 
-  async sendMail(options: { to: string | string[]; subject: string; text?: string; html?: string }): Promise<void> {
+  async sendMail(options: {
+    to: string | string[]
+    subject: string
+    text?: string
+    html?: string
+  }): Promise<void> {
     const { to, subject, text, html } = options
 
     await this.transporter.sendMail({

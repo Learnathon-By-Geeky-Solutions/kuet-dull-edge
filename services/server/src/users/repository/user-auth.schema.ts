@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document } from 'mongoose'
+import { Document, Types } from 'mongoose'
 import * as bcrypt from 'bcrypt'
-import { AccountStatus, IUserAuth } from '../../../interfaces/users.interfaces'
-import { Types } from 'mongoose'
+import { IUserAuth } from '../../common/interfaces'
+import { AccountStatus } from '../../common/enums'
 
 @Schema({ timestamps: true })
 export class UserAuth extends Document implements IUserAuth {
@@ -16,7 +16,12 @@ export class UserAuth extends Document implements IUserAuth {
   @Prop({ required: true })
   password: string
 
-  @Prop({ required: true, type: String, enum: AccountStatus, default: AccountStatus.EMAIL_VERIFICATION })
+  @Prop({
+    required: true,
+    type: String,
+    enum: AccountStatus,
+    default: AccountStatus.EMAIL_VERIFICATION
+  })
   accountStatus: AccountStatus
 
   comparePassword: (password: string) => Promise<boolean>
@@ -32,6 +37,8 @@ UserAuthSchema.pre('save', async function (next) {
   next()
 })
 
-UserAuthSchema.methods.comparePassword = async function (password: string): Promise<boolean> {
+UserAuthSchema.methods.comparePassword = async function (
+  password: string
+): Promise<boolean> {
   return await bcrypt.compare(password, this.password)
 }

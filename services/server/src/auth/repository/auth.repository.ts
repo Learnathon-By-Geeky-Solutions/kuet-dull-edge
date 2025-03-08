@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { ClientSession, Model, Types } from 'mongoose'
-import { GenericRepository } from '../../common/generic.repository'
+import { GenericRepository } from '../../common/repository/generic.repository'
 import { EmailVerification } from './email-verification.schema'
 import { RefreshToken } from './refreshToken.schema'
 
@@ -14,11 +14,17 @@ export class EmailVerificationRepository extends GenericRepository<EmailVerifica
     super(emailVerificationModel)
   }
 
-  async findByUserId(userId: Types.ObjectId, session?: ClientSession): Promise<EmailVerification | null> {
+  async findByUserId(
+    userId: Types.ObjectId,
+    session?: ClientSession
+  ): Promise<EmailVerification | null> {
     return this.findOne({ _id: userId }, session)
   }
 
-  async deleteByUserId(userId: Types.ObjectId, session?: ClientSession): Promise<boolean> {
+  async deleteByUserId(
+    userId: Types.ObjectId,
+    session?: ClientSession
+  ): Promise<boolean> {
     const result = await this.delete({ _id: userId }, session)
     return !!result
   }
@@ -77,7 +83,10 @@ export class RefreshTokenRepository extends GenericRepository<RefreshToken> {
     )
   }
 
-  async deleteAllForUser(userId: Types.ObjectId, session?: ClientSession): Promise<number> {
+  async deleteAllForUser(
+    userId: Types.ObjectId,
+    session?: ClientSession
+  ): Promise<number> {
     const result = await this.deleteMany({ userId }, session)
     return result || 0
   }

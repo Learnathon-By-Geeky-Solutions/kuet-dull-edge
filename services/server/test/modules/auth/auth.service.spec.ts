@@ -7,18 +7,18 @@ import {
   InternalServerErrorException,
   UnauthorizedException
 } from '@nestjs/common'
-import { AuthService } from '../../../src/modules/auth/auth.service'
-import { AccountStatus } from '../../../src/common/interfaces/users.interfaces'
-import {
-  EmailVerificationRepository,
-  RefreshTokenRepository
-} from '../../../src/modules/auth/repository/auth.repository'
+import { AuthService } from '../../../src/auth/auth.service'
+import { AccountStatus } from '../../../src/common/enums'
 import {
   UserAuthRepository,
   UserDetailsRepository,
   UserMFARepository,
   UserPeekRepository
-} from '../../../src/modules/users/repository/users.repository'
+} from '../../../src/users/repository/users.repository'
+import {
+  EmailVerificationRepository,
+  RefreshTokenRepository
+} from '../../../src/auth/repository/auth.repository'
 
 describe('AuthService', () => {
   let service: AuthService
@@ -56,12 +56,20 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: {
-            sign: jest.fn().mockImplementation(payload => `mock_token_${JSON.stringify(payload)}`),
+            sign: jest
+              .fn()
+              .mockImplementation(payload => `mock_token_${JSON.stringify(payload)}`),
             decode: jest.fn().mockImplementation(token => {
               if (token === 'valid_token') {
-                return { registerId: new Types.ObjectId(), accountStatus: AccountStatus.EMAIL_VERIFICATION }
+                return {
+                  registerId: new Types.ObjectId(),
+                  accountStatus: AccountStatus.EMAIL_VERIFICATION
+                }
               } else if (token === 'onboarding_token') {
-                return { userId: new Types.ObjectId(), accountStatus: AccountStatus.ONBOARDING }
+                return {
+                  userId: new Types.ObjectId(),
+                  accountStatus: AccountStatus.ONBOARDING
+                }
               } else if (token.includes('refresh_token')) {
                 return { userId: mockUserAuth._id, rtId: new Types.ObjectId() }
               }
@@ -125,7 +133,9 @@ describe('AuthService', () => {
     jwtService = module.get<JwtService>(JwtService)
     userAuthRepository = module.get<UserAuthRepository>(UserAuthRepository)
     refreshTokenRepository = module.get<RefreshTokenRepository>(RefreshTokenRepository)
-    emailVerificationRepository = module.get<EmailVerificationRepository>(EmailVerificationRepository)
+    emailVerificationRepository = module.get<EmailVerificationRepository>(
+      EmailVerificationRepository
+    )
     userPeekRepository = module.get<UserPeekRepository>(UserPeekRepository)
     userDetailsRepository = module.get<UserDetailsRepository>(UserDetailsRepository)
   })
@@ -262,7 +272,10 @@ describe('AuthService', () => {
 
       const isValid = await service.validateRefreshToken(userId, rtId, token)
 
-      expect(refreshTokenRepository.findByUserAndTokenId).toHaveBeenCalledWith(userId, rtId)
+      expect(refreshTokenRepository.findByUserAndTokenId).toHaveBeenCalledWith(
+        userId,
+        rtId
+      )
       expect(isValid).toBe(true)
     })
 
@@ -396,7 +409,10 @@ describe('AuthService', () => {
 
       const result = await service.registerLocal(registerDto)
 
-      expect(userAuthRepository.findByEmailOrUsername).toHaveBeenCalledWith(registerDto.email, registerDto.username)
+      expect(userAuthRepository.findByEmailOrUsername).toHaveBeenCalledWith(
+        registerDto.email,
+        registerDto.username
+      )
       expect(userAuthRepository.createUser).toHaveBeenCalledWith({
         email: registerDto.email,
         username: registerDto.username,
@@ -404,7 +420,10 @@ describe('AuthService', () => {
         accountStatus: AccountStatus.EMAIL_VERIFICATION
       })
       expect(service.createVerification).toHaveBeenCalledWith(newUserId)
-      expect(service.sendVerificationEmail).toHaveBeenCalledWith(registerDto.email, '123456')
+      expect(service.sendVerificationEmail).toHaveBeenCalledWith(
+        registerDto.email,
+        '123456'
+      )
       expect(jwtService.sign).toHaveBeenCalledWith({
         registerId: newUserId,
         accountStatus: AccountStatus.EMAIL_VERIFICATION
@@ -415,7 +434,9 @@ describe('AuthService', () => {
     it('should throw ConflictException when user already exists', async () => {
       userAuthRepository.findByEmailOrUsername = jest.fn().mockResolvedValue(mockUserAuth)
 
-      await expect(service.registerLocal(registerDto)).rejects.toThrow(new ConflictException('USER_EXISTS'))
+      await expect(service.registerLocal(registerDto)).rejects.toThrow(
+        new ConflictException('USER_EXISTS')
+      )
 
       expect(userAuthRepository.createUser).not.toHaveBeenCalled()
     })
@@ -424,7 +445,9 @@ describe('AuthService', () => {
       userAuthRepository.findByEmailOrUsername = jest.fn().mockResolvedValue(null)
       userAuthRepository.createUser = jest.fn().mockResolvedValue(null)
 
-      await expect(service.registerLocal(registerDto)).rejects.toThrow(new InternalServerErrorException('DATABASE'))
+      await expect(service.registerLocal(registerDto)).rejects.toThrow(
+        new InternalServerErrorException('DATABASE')
+      )
 
       expect(service.createVerification).not.toHaveBeenCalled()
     })
@@ -439,14 +462,19 @@ describe('AuthService', () => {
       const verificationCode = await service.createVerification(userId)
 
       expect(emailVerificationRepository.deleteByUserId).toHaveBeenCalledWith(userId)
-      expect(emailVerificationRepository.createVerification).toHaveBeenCalledWith(userId, expect.any(String))
+      expect(emailVerificationRepository.createVerification).toHaveBeenCalledWith(
+        userId,
+        expect.any(String)
+      )
       expect(verificationCode).toMatch(/^\d{6}$/) // 6-digit code
     })
 
     it('should throw InternalServerErrorException when verification creation fails', async () => {
       const userId = new Types.ObjectId()
       emailVerificationRepository.deleteByUserId = jest.fn().mockResolvedValue(true)
-      emailVerificationRepository.createVerification = jest.fn().mockRejectedValue(new Error('DB Error'))
+      emailVerificationRepository.createVerification = jest
+        .fn()
+        .mockRejectedValue(new Error('DB Error'))
 
       await expect(service.createVerification(userId)).rejects.toThrow(
         new InternalServerErrorException('EMAIL_VERIFICATION_SAVE_ERROR')
@@ -478,7 +506,9 @@ describe('AuthService', () => {
 
       emailVerificationRepository.findByUserId = jest.fn().mockResolvedValue(null)
 
-      await expect(service.verifyCode(userId, code)).rejects.toThrow(new BadRequestException('VERIFICATION_INVALID_ID'))
+      await expect(service.verifyCode(userId, code)).rejects.toThrow(
+        new BadRequestException('VERIFICATION_INVALID_ID')
+      )
     })
 
     it('should increment tries and return false for invalid code', async () => {
@@ -492,7 +522,9 @@ describe('AuthService', () => {
         save: jest.fn().mockResolvedValue(true)
       }
 
-      emailVerificationRepository.findByUserId = jest.fn().mockResolvedValue(mockVerification)
+      emailVerificationRepository.findByUserId = jest
+        .fn()
+        .mockResolvedValue(mockVerification)
 
       const result = await service.verifyCode(userId, code)
 
@@ -512,7 +544,9 @@ describe('AuthService', () => {
         save: jest.fn().mockResolvedValue(true)
       }
 
-      emailVerificationRepository.findByUserId = jest.fn().mockResolvedValue(mockVerification)
+      emailVerificationRepository.findByUserId = jest
+        .fn()
+        .mockResolvedValue(mockVerification)
       emailVerificationRepository.deleteByUserId = jest.fn().mockResolvedValue(true)
 
       await expect(service.verifyCode(userId, code)).rejects.toThrow(
@@ -534,9 +568,13 @@ describe('AuthService', () => {
         save: jest.fn().mockRejectedValue(new Error('DB Error'))
       }
 
-      emailVerificationRepository.findByUserId = jest.fn().mockResolvedValue(mockVerification)
+      emailVerificationRepository.findByUserId = jest
+        .fn()
+        .mockResolvedValue(mockVerification)
 
-      await expect(service.verifyCode(userId, code)).rejects.toThrow(new InternalServerErrorException('ERROR'))
+      await expect(service.verifyCode(userId, code)).rejects.toThrow(
+        new InternalServerErrorException('ERROR')
+      )
     })
   })
 
@@ -598,15 +636,23 @@ describe('AuthService', () => {
       const result = await service.verifyEmail(verifyEmailDto)
 
       expect(userAuthRepository.findById).toHaveBeenCalledWith(userId)
-      expect(service.verifyCode).toHaveBeenCalledWith(userId, verifyEmailDto.verificationCode)
-      expect(userAuthRepository.updateAccountStatus).toHaveBeenCalledWith(userId, AccountStatus.ONBOARDING)
+      expect(service.verifyCode).toHaveBeenCalledWith(
+        userId,
+        verifyEmailDto.verificationCode
+      )
+      expect(userAuthRepository.updateAccountStatus).toHaveBeenCalledWith(
+        userId,
+        AccountStatus.ONBOARDING
+      )
       expect(result).toHaveProperty('token')
     })
 
     it('should throw BadRequestException for invalid token', async () => {
       jwtService.decode = jest.fn().mockReturnValue({ someOtherField: 'value' })
 
-      await expect(service.verifyEmail(verifyEmailDto)).rejects.toThrow(new BadRequestException('INVALID_TOKEN'))
+      await expect(service.verifyEmail(verifyEmailDto)).rejects.toThrow(
+        new BadRequestException('INVALID_TOKEN')
+      )
     })
 
     it('should throw BadRequestException when user not found', async () => {
@@ -702,7 +748,10 @@ describe('AuthService', () => {
         institute: mockOnboardingDto.institute,
         instituteIdentifier: mockOnboardingDto.instituteIdentifier
       })
-      expect(userAuthRepository.updateAccountStatus).toHaveBeenCalledWith(mockUserId, AccountStatus.ACTIVE)
+      expect(userAuthRepository.updateAccountStatus).toHaveBeenCalledWith(
+        mockUserId,
+        AccountStatus.ACTIVE
+      )
       expect(jwtService.sign).toHaveBeenCalledWith({
         userId: mockUserId,
         accountStatus: AccountStatus.ACTIVE
@@ -908,7 +957,10 @@ describe('AuthService', () => {
         instituteIdentifier: mockOauthOnboardingDto.instituteIdentifier
       })
 
-      expect(userAuthRepository.updateAccountStatus).toHaveBeenCalledWith(mockUserId, AccountStatus.ACTIVE)
+      expect(userAuthRepository.updateAccountStatus).toHaveBeenCalledWith(
+        mockUserId,
+        AccountStatus.ACTIVE
+      )
 
       expect(jwtService.sign).toHaveBeenCalledWith({
         userId: mockUserId,
@@ -930,7 +982,10 @@ describe('AuthService', () => {
       userAuthRepository.updateAccountStatus.mockResolvedValue(true)
 
       // Execute
-      await service.registerOnboardingOauth(mockOauthOnboardingDto, { email: mockEmail, photo: mockPhoto })
+      await service.registerOnboardingOauth(mockOauthOnboardingDto, {
+        email: mockEmail,
+        photo: mockPhoto
+      })
 
       // Assert - checking the password is a random string
       const createUserCall = userAuthRepository.createUser.mock.calls[0][0]
@@ -944,7 +999,10 @@ describe('AuthService', () => {
 
       // Execute & Assert
       await expect(
-        service.registerOnboardingOauth(mockOauthOnboardingDto, { email: mockEmail, photo: mockPhoto })
+        service.registerOnboardingOauth(mockOauthOnboardingDto, {
+          email: mockEmail,
+          photo: mockPhoto
+        })
       ).rejects.toThrow(Error)
 
       expect(userPeekRepository.createPeek).not.toHaveBeenCalled()
@@ -961,7 +1019,10 @@ describe('AuthService', () => {
 
       // Execute & Assert
       await expect(
-        service.registerOnboardingOauth(mockOauthOnboardingDto, { email: mockEmail, photo: mockPhoto })
+        service.registerOnboardingOauth(mockOauthOnboardingDto, {
+          email: mockEmail,
+          photo: mockPhoto
+        })
       ).rejects.toThrow(Error)
 
       expect(userDetailsRepository.createDetails).not.toHaveBeenCalled()
@@ -979,7 +1040,10 @@ describe('AuthService', () => {
 
       // Execute & Assert
       await expect(
-        service.registerOnboardingOauth(mockOauthOnboardingDto, { email: mockEmail, photo: mockPhoto })
+        service.registerOnboardingOauth(mockOauthOnboardingDto, {
+          email: mockEmail,
+          photo: mockPhoto
+        })
       ).rejects.toThrow(Error)
 
       expect(userAuthRepository.updateAccountStatus).not.toHaveBeenCalled()
@@ -998,7 +1062,10 @@ describe('AuthService', () => {
 
       // Execute & Assert
       await expect(
-        service.registerOnboardingOauth(mockOauthOnboardingDto, { email: mockEmail, photo: mockPhoto })
+        service.registerOnboardingOauth(mockOauthOnboardingDto, {
+          email: mockEmail,
+          photo: mockPhoto
+        })
       ).rejects.toThrow(Error)
     })
 
@@ -1016,7 +1083,10 @@ describe('AuthService', () => {
       const customPhoto = 'custom_photo_url.jpg'
 
       // Execute
-      await service.registerOnboardingOauth(mockOauthOnboardingDto, { email: mockEmail, photo: customPhoto })
+      await service.registerOnboardingOauth(mockOauthOnboardingDto, {
+        email: mockEmail,
+        photo: customPhoto
+      })
 
       // Assert
       expect(userPeekRepository.createPeek).toHaveBeenCalledWith(mockUserId, {

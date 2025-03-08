@@ -3,13 +3,13 @@ import { MongooseModule } from '@nestjs/mongoose'
 import { UserAuth, UserAuthSchema } from './repository/user-auth.schema'
 import { UserDetails, UserDetailsSchema } from './repository/user-details.schema'
 import { UserPeek, UserPeekSchema } from './repository/user-peek.schema'
-import { UserMFA, UserMFASchema } from './repository/user-mfa.schema'
+import { UserMFA, UserMFASchema } from '../mfa/repository/user-mfa.schema'
 import {
   UserAuthRepository,
   UserDetailsRepository,
-  UserMFARepository,
   UserPeekRepository
 } from './repository/users.repository'
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -19,7 +19,7 @@ import {
       { name: UserMFA.name, schema: UserMFASchema }
     ])
   ],
-  providers: [UserAuthRepository, UserDetailsRepository, UserPeekRepository, UserMFARepository],
-  exports: [UserAuthRepository, UserDetailsRepository, UserPeekRepository, UserMFARepository]
+  providers: [UserAuthRepository, UserDetailsRepository, UserPeekRepository],
+  exports: [UserAuthRepository, UserDetailsRepository, UserPeekRepository]
 })
 export class UsersModule {}

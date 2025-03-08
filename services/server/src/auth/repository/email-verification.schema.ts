@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
-import { IEmailVerification } from '../../common/interfaces/auth.interfaces'
+import { IEmailVerification } from '../../common/interfaces'
 import * as bcrypt from 'bcrypt'
 
 @Schema({ timestamps: true })
@@ -16,7 +16,7 @@ export class EmailVerification extends Document implements IEmailVerification {
   @Prop({ default: 0 })
   tries: number
 
-  compareVerificationCode: (verificationCode: string) => Promise<boolean>
+  compareVerificationCode: (verificationCode: number) => Promise<boolean>
 }
 
 export const EmailVerificationSchema = SchemaFactory.createForClass(EmailVerification)
@@ -29,6 +29,8 @@ EmailVerificationSchema.pre('save', async function (next) {
   next()
 })
 
-EmailVerificationSchema.methods.compareVerificationCode = async function (verificationCode: string): Promise<boolean> {
+EmailVerificationSchema.methods.compareVerificationCode = async function (
+  verificationCode: string
+): Promise<boolean> {
   return await bcrypt.compare(verificationCode, this.verificationCode)
 }

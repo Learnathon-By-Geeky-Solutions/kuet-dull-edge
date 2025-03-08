@@ -1,7 +1,23 @@
-import { IsISO8601, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator'
+import {
+  IsISO8601,
+  IsJWT,
+  IsNotEmpty,
+  IsString,
+  MaxLength,
+  MinLength
+} from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
+import { IOnboarding } from '../../common/interfaces/'
 
-export class OnboardingDto {
+export class OnboardingDto implements IOnboarding {
+  @ApiProperty({
+    description: 'Access token',
+    example:
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
+  })
+  @IsNotEmpty()
+  @IsJWT()
+  token: string
   @ApiProperty({
     description: 'Name',
     example: 'John Doe',
@@ -21,7 +37,7 @@ export class OnboardingDto {
   })
   @IsNotEmpty()
   @IsISO8601()
-  birthday: string
+  birthday: Date
 
   @ApiProperty({
     description: 'Educational institute name',

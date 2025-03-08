@@ -1,6 +1,6 @@
-import { Injectable, HttpException } from '@nestjs/common'
+import { HttpException, Injectable } from '@nestjs/common'
 import axios from 'axios'
-import { config } from '../config'
+import { config } from '../../config'
 
 @Injectable()
 export class CaptchaService {
@@ -37,7 +37,9 @@ export class CaptchaService {
         throw new HttpException('C_ERR', 502)
       }
 
-      const valid = response.data.valid
+      const data = response.data as any
+
+      const valid = data.valid as boolean
 
       if (!valid) {
         throw new HttpException('CAPTCHA_FAILED', 400)

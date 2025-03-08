@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { AuthController } from '../../../src/modules/auth/controllers/auth.controller'
-import { AuthService } from '../../../src/modules/auth/auth.service'
+import { AuthController } from '../../../src/auth/auth.controller'
+import { AuthService } from '../../../src/auth/auth.service'
 import { JwtAuthGuard } from '../../../src/guards/jwt-auth.guard'
 import { GoogleAuthGuard } from '../../../src/guards/google.guard'
 import { LocalAuthGuard } from '../../../src/guards/local-auth.guard'
 import { UnauthorizedException } from '@nestjs/common'
-import { AccountStatus } from '../../../src/common/interfaces/users.interfaces'
-import { config } from '../../../src/modules/config'
+import { AccountStatus } from '../../../src/common/enums'
+import { config } from '../../../src/config'
 
 describe('AuthController', () => {
   let controller: AuthController
@@ -54,7 +54,7 @@ describe('AuthController', () => {
       const expectedToken = { token: 'anonymous-token' }
       jest.spyOn(authService, 'getAnonymousToken').mockResolvedValue(expectedToken)
 
-      const result = await controller.anonymous(undefined)
+      const result = await controller.anonymous()
 
       expect(authService.getAnonymousToken).toHaveBeenCalled()
       expect(result).toEqual(expectedToken)
@@ -64,7 +64,7 @@ describe('AuthController', () => {
       const error = new Error('Service error')
       jest.spyOn(authService, 'getAnonymousToken').mockRejectedValue(error)
 
-      await expect(controller.anonymous(undefined)).rejects.toThrow(error)
+      await expect(controller.anonymous()).rejects.toThrow(error)
     })
   })
 
@@ -119,7 +119,7 @@ describe('AuthController', () => {
 
       process.env.FRONTEND_URL = frontendUrl
 
-      jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token })
+      //jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token })
 
       const result = await controller.googleLoginCallback(req)
 
@@ -139,7 +139,7 @@ describe('AuthController', () => {
 
       process.env.FRONTEND_URL = '' // Clear env variable
 
-      jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token })
+      //jest.spyOn(authService, 'oauthEntry').mockResolvedValue({ token })
 
       const result = await controller.googleLoginCallback(req)
 
@@ -280,7 +280,7 @@ describe('AuthController', () => {
   describe('verifyEmail', () => {
     it('should call authService.verifyEmail with correct parameters', async () => {
       const emailVerifyDto = {
-        verificationCode: '123456',
+        verificationCode: 123456,
         token: 'jwt-token-here'
       }
 
@@ -297,7 +297,7 @@ describe('AuthController', () => {
 
     it('should handle verification errors', async () => {
       const emailVerifyDto = {
-        verificationCode: 'invalid',
+        verificationCode: -1,
         token: 'jwt-token-here'
       }
 
@@ -388,7 +388,9 @@ describe('AuthController', () => {
         }
       }
 
-      await expect(controller.onboardingOauth(oauthOnboardingDto, req)).rejects.toThrow(UnauthorizedException)
+      await expect(controller.onboardingOauth(oauthOnboardingDto, req)).rejects.toThrow(
+        UnauthorizedException
+      )
     })
 
     it('should call authService.registerOnboardingOauth with correct parameters', async () => {
@@ -414,7 +416,10 @@ describe('AuthController', () => {
 
       const result = await controller.onboardingOauth(oauthOnboardingDto, req)
 
-      expect(authService.registerOnboardingOauth).toHaveBeenCalledWith(oauthOnboardingDto, req.user.data)
+      expect(authService.registerOnboardingOauth).toHaveBeenCalledWith(
+        oauthOnboardingDto,
+        req.user.data
+      )
       expect(result).toEqual(expectedResult)
     })
 
@@ -439,7 +444,9 @@ describe('AuthController', () => {
 
       jest.spyOn(authService, 'registerOnboardingOauth').mockRejectedValue(error)
 
-      await expect(controller.onboardingOauth(oauthOnboardingDto, req)).rejects.toThrow(error)
+      await expect(controller.onboardingOauth(oauthOnboardingDto, req)).rejects.toThrow(
+        error
+      )
     })
   })
 

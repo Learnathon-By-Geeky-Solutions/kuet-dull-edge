@@ -1,6 +1,5 @@
-import { Document, Types } from 'mongoose'
-import { AccountStatus } from '../enums/account-status.enum'
-import { MFAType } from '../enums/mfa-type.enum'
+import { Types } from 'mongoose'
+import { AccountStatus } from '../enums'
 
 export interface IUserAuth {
   _id: Types.ObjectId
@@ -12,24 +11,16 @@ export interface IUserAuth {
   comparePassword(password: string): Promise<boolean>
 }
 
-export interface IUserDetails extends Document {
+export interface IUserDetails {
   _id: Types.ObjectId
   birthday: Date
   institute: string
   instituteIdentifier: string
 }
 
-export interface IUserPeek extends Document {
+export interface IUserPeek {
   _id: Types.ObjectId
   username: string
   name: string
   photo?: string
-}
-
-export interface IUserMFA extends Document {
-  _id: Types.ObjectId
-  userId: Types.ObjectId
-  type: MFAType
-  enabled: boolean
-  secret?: string
 }

@@ -25,11 +25,15 @@ export class GenericRepository<T extends Document> {
    * @returns Created document or null on error
    */
   async create(doc: Partial<T>, session?: ClientSession): Promise<T | null> {
+    if (doc._id === undefined) {
+      doc._id = new Types.ObjectId()
+    }
     try {
       const createdEntity = new this.model(doc)
       return await createdEntity.save({ session })
     } catch (error) {
       if (error.code === 11000) {
+        // TODO: retry on duplicate key error
         this.logger.error(`Duplicate key error: ${JSON.stringify(error.keyValue)}`)
         return null
       }
@@ -49,10 +53,15 @@ export class GenericRepository<T extends Document> {
       return (await this.model.insertMany(docs, { session })) as unknown as T[]
     } catch (error) {
       if (error.code === 11000) {
-        this.logger.error(`Duplicate key error in bulk insert: ${JSON.stringify(error.keyValue)}`)
+        this.logger.error(
+          `Duplicate key error in bulk insert: ${JSON.stringify(error.keyValue)}`
+        )
         return null
       }
-      this.logger.error(`Error creating multiple documents: ${error.message}`, error.stack)
+      this.logger.error(
+        `Error creating multiple documents: ${error.message}`,
+        error.stack
+      )
       return null
     }
   }
@@ -64,7 +73,11 @@ export class GenericRepository<T extends Document> {
    * @param session Optional MongoDB session for transactions
    * @returns Array of documents or null on error
    */
-  async findAll(filter: FilterQuery<T> = {}, options: QueryOptions = {}, session?: ClientSession): Promise<T[] | null> {
+  async findAll(
+    filter: FilterQuery<T> = {},
+    options: QueryOptions = {},
+    session?: ClientSession
+  ): Promise<T[] | null> {
     try {
       return await this.model.find(filter, null, { ...options, session }).exec()
     } catch (error) {
@@ -80,11 +93,29 @@ export class GenericRepository<T extends Document> {
    * @param session Optional MongoDB session for transactions
    * @returns Document or null if not found
    */
-  async findOne(filter: FilterQuery<T>, options: QueryOptions = {}, session?: ClientSession): Promise<T | null> {
+  async findOne(
+    filter: FilterQuery<T>,
+    options: QueryOptions = {},
+    session?: ClientSession
+  ): Promise<T | null> {
     try {
       return await this.model.findOne(filter, null, { ...options, session }).exec()
     } catch (error) {
       this.logger.error(`Error finding document: ${error.message}`, error.stack)
+      return null
+    }
+  }
+
+  async findOneWithSelect(
+    filter: FilterQuery<T> = {},
+    select: string,
+    options: QueryOptions = {},
+    session?: ClientSession
+  ): Promise<Partial<T> | null> {
+    try {
+      return await this.model.find(filter, select, { ...options, session }).exec()
+    } catch (error) {
+      this.logger.error(`Error finding documents: ${error.message}`, error.stack)
       return null
     }
   }
@@ -96,7 +127,11 @@ export class GenericRepository<T extends Document> {
    * @param session Optional MongoDB session for transactions
    * @returns Document or null if not found
    */
-  async findById(id: Types.ObjectId, options: QueryOptions = {}, session?: ClientSession): Promise<T | null> {
+  async findById(
+    id: Types.ObjectId,
+    options: QueryOptions = {},
+    session?: ClientSession
+  ): Promise<T | null> {
     try {
       const document = await this.model.findById(id, null, { ...options, session }).exec()
       if (!document) {
@@ -124,16 +159,22 @@ export class GenericRepository<T extends Document> {
     session?: ClientSession
   ): Promise<T | null> {
     try {
-      const document = await this.model.findOneAndUpdate(filter, update, { new: true, ...options, session }).exec()
+      const document = await this.model
+        .findOneAndUpdate(filter, update, { new: true, ...options, session })
+        .exec()
 
       if (!document && options.upsert !== true) {
-        this.logger.warn(`No document found to update with filter: ${JSON.stringify(filter)}`)
+        this.logger.warn(
+          `No document found to update with filter: ${JSON.stringify(filter)}`
+        )
       }
 
       return document
     } catch (error) {
       if (error.code === 11000) {
-        this.logger.error(`Duplicate key error during update: ${JSON.stringify(error.keyValue)}`)
+        this.logger.error(
+          `Duplicate key error during update: ${JSON.stringify(error.keyValue)}`
+        )
         return null
       }
       this.logger.error(`Error updating document: ${error.message}`, error.stack)
@@ -156,7 +197,10 @@ export class GenericRepository<T extends Document> {
     try {
       return await this.model.updateMany(filter, update, { session }).exec()
     } catch (error) {
-      this.logger.error(`Error updating multiple documents: ${error.message}`, error.stack)
+      this.logger.error(
+        `Error updating multiple documents: ${error.message}`,
+        error.stack
+      )
       return null
     }
   }
@@ -167,7 +211,7 @@ export class GenericRepository<T extends Document> {
    * @param session Optional MongoDB session for transactions
    * @returns True if document was deleted, false otherwise
    */
-  async delete(filter: FilterQuery<T>, session?: ClientSession): Promise<boolean> {
+  async deleteOne(filter: FilterQuery<T>, session?: ClientSession): Promise<boolean> {
     try {
       const result = await this.model.deleteOne(filter, { session }).exec()
       return result.deletedCount > 0
@@ -183,12 +227,18 @@ export class GenericRepository<T extends Document> {
    * @param session Optional MongoDB session for transactions
    * @returns Number of deleted documents or null on error
    */
-  async deleteMany(filter: FilterQuery<T>, session?: ClientSession): Promise<number | null> {
+  async deleteMany(
+    filter: FilterQuery<T>,
+    session?: ClientSession
+  ): Promise<number | null> {
     try {
       const result = await this.model.deleteMany(filter, { session }).exec()
       return result.deletedCount
     } catch (error) {
-      this.logger.error(`Error deleting multiple documents: ${error.message}`, error.stack)
+      this.logger.error(
+        `Error deleting multiple documents: ${error.message}`,
+        error.stack
+      )
       return null
     }
   }
@@ -199,7 +249,10 @@ export class GenericRepository<T extends Document> {
    * @param session Optional MongoDB session for transactions
    * @returns Count of matching documents or null on error
    */
-  async count(filter: FilterQuery<T> = {}, session?: ClientSession): Promise<number | null> {
+  async count(
+    filter: FilterQuery<T> = {},
+    session?: ClientSession
+  ): Promise<number | null> {
     try {
       return await this.model.countDocuments(filter, { session }).exec()
     } catch (error) {
@@ -214,12 +267,24 @@ export class GenericRepository<T extends Document> {
    * @param session Optional MongoDB session for transactions
    * @returns Aggregation result or null on error
    */
-  async aggregate<R = any>(pipeline: PipelineStage[], session?: ClientSession): Promise<R[] | null> {
+  async aggregate<R = any>(
+    pipeline: PipelineStage[],
+    session?: ClientSession
+  ): Promise<R[] | null> {
     try {
       return await this.model.aggregate<R>(pipeline).session(session).exec()
     } catch (error) {
       this.logger.error(`Error executing aggregation: ${error.message}`, error.stack)
       return null
     }
+  }
+
+  /**
+   * Start a new MongoDB session
+   * @returns New session instance
+   * @throws Error if session could not be started
+   */
+  startSession(): Promise<ClientSession> {
+    return this.model.db.startSession()
   }
 }

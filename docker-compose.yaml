@@ -1,4 +1,5 @@
-
+include:
+  - ./services/mcaptcha/docker-compose.yml
 services:
   minio:
     build:
@@ -26,13 +27,6 @@ services:
     networks:
       - mongo-net
 
-  mcaptcha:
-    extends:
-      file: ./services/mcaptcha/docker-compose.yml
-      service: mcaptcha
-    networks:
-      - mcaptcha-net
-
   server:
     build:
       context: ./services/server
@@ -45,8 +39,6 @@ services:
     #depends_on:
     #  - mongo
     #  - mcaptcha
-    volumes:
-      - ./services/server:/app
     networks:
       - minio-net
       - mongo-net

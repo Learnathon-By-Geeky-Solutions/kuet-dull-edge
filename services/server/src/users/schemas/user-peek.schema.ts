@@ -1,10 +1,16 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Document, Types } from 'mongoose'
-import { IUserPeek } from '../../../interfaces/users.interfaces'
+import { IUserPeek } from '../../../interfaces'
 
 @Schema({ timestamps: true })
 export class UserPeek extends Document implements IUserPeek {
-  @Prop({ required: true, type: Types.ObjectId, auto: true, unique: true, index: true })
+  @Prop({
+    required: true,
+    type: Types.ObjectId,
+    auto: true,
+    unique: true,
+    index: true
+  })
   _id: Types.ObjectId
 
   @Prop({ required: true })

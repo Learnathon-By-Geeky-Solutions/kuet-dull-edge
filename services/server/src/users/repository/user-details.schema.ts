@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document } from 'mongoose'
-import { IUserDetails } from '../../../interfaces/users.interfaces'
-import { Types } from 'mongoose'
+import { Document, Types } from 'mongoose'
+import { IUserDetails } from '../../common/interfaces'
 
 @Schema({ timestamps: true })
 export class UserDetails extends Document implements IUserDetails {

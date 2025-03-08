@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { JwtRefreshStrategy, JwtStrategy } from '../../../../src/modules/auth/strategies/jwt.strategy'
+import {
+  JwtRefreshStrategy,
+  JwtStrategy
+} from '../../../../src/modules/auth/strategies/jwt.strategy'
 import { UnauthorizedException } from '@nestjs/common'
-import { AccountStatus } from '../../../../src/common/interfaces/users.interfaces'
+import { AccountStatus } from '../../../../src/common/interfaces'
 import { Types } from 'mongoose'
 
 describe('JwtRefreshStrategy', () => {
@@ -42,7 +45,9 @@ describe('JwtRefreshStrategy', () => {
     })
 
     it('should throw UnauthorizedException if account status is not ACTIVE', async () => {
-      const nonActiveStatuses = Object.values(AccountStatus).filter(status => status !== AccountStatus.ACTIVE)
+      const nonActiveStatuses = Object.values(AccountStatus).filter(
+        status => status !== AccountStatus.ACTIVE
+      )
 
       for (const status of nonActiveStatuses) {
         const payload = {

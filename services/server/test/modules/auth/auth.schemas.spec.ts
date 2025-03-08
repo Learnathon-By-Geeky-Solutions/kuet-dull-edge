@@ -1,12 +1,7 @@
-import { Model, Types, Connection, connect } from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
-import * as bcrypt from 'bcrypt'
-import { RefreshToken, RefreshTokenSchema } from '../../../src/modules/auth/repository/refreshToken.schema'
-import {
-  EmailVerification,
-  EmailVerificationSchema
-} from '../../../src/modules/auth/repository/email-verification.schema'
-import { config } from '../../../src/modules/config'
+import { connect, Connection, Model, Types } from 'mongoose'
+import { RefreshToken, RefreshTokenSchema } from '../../../src/auth/repository/refreshToken.schema'
+import { EmailVerification, EmailVerificationSchema } from '../../../src/auth/repository/email-verification.schema'
 
 describe('AuthSchemas', () => {
   let mongod: MongoMemoryServer
@@ -143,7 +138,7 @@ describe('AuthSchemas', () => {
     })
 
     it('should correctly compare valid verification codes', async () => {
-      const plainCode = '123456'
+      const plainCode = 123456
 
       const verification = new emailVerificationModel({
         verificationCode: plainCode
@@ -156,8 +151,8 @@ describe('AuthSchemas', () => {
     })
 
     it('should reject invalid verification codes', async () => {
-      const plainCode = '123456'
-      const invalidCode = '654321'
+      const plainCode = 123456
+      const invalidCode = 654321
 
       const verification = new emailVerificationModel({
         verificationCode: plainCode
