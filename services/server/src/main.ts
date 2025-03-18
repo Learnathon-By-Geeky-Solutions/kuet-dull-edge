@@ -7,6 +7,10 @@ import cookieParser from 'cookie-parser'
 // TODO : Use SSL
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule)
+  app.enableCors({
+    origin: 'http://localhost:3000', // Allow frontend requests
+    credentials: true // Allow cookies if needed
+  })
   app.enableVersioning({
     type: VersioningType.URI
   })
@@ -19,7 +23,7 @@ async function bootstrap(): Promise<void> {
     .build()
   const document = SwaggerModule.createDocument(app, swaggerConfig)
   SwaggerModule.setup('api', app, document)
-  await app.listen(process.env.PORT ?? 3000)
+  await app.listen(process.env.PORT ?? 5000)
 }
 
 bootstrap().then(() => console.log('Server started'))
