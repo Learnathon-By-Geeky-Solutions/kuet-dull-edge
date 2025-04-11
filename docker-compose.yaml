@@ -43,8 +43,18 @@ services:
       - minio-net
       - mongo-net
       - mcaptcha-net
+      - redis-net
 
+  redis:
+    build:
+      context: ./services/redis
+      dockerfile: Dockerfile
+    ports:
+      - "6379:6379"
+    networks:
+      - redis-net
 networks:
   minio-net:
   mongo-net:
   mcaptcha-net:
+  redis-net:

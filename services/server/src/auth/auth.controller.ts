@@ -72,7 +72,7 @@ export class AuthController {
   })
   @Throttle({ default: { limit: 5, ttl: 3600 } })
   @UsePipes(EmptyBodyValidationPipe)
-  anonymous(): TokenResponseDto {
+  anonymous(): string {
     return this.authService.getAnonymousToken()
   }
 
@@ -81,13 +81,13 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Authentication successful',
-    type: TokenResponseDto
+    type: String
   })
   @ApiBody({ type: LoginDto, required: true })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
   @UseGuards(LocalAuthGuard)
   async login(@Request() req: any, @Res() res: any) {
-    if (req.userData === undefined || req.userData == false)
+    if (req.userData === undefined || req.userData === false)
       throw new UnauthorizedException('INVALID_CREDENTIALS')
     const { token, refreshToken } = req.userData
     res.cookie('refresh-token', refreshToken, {
@@ -95,7 +95,7 @@ export class AuthController {
       sameSite: 'strict',
       secure: config._.mode === 'production'
     })
-    res.json({ token })
+    res.json(token)
   }
 
   @Get('google')
@@ -145,7 +145,7 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description: 'Registration successful',
-    type: TokenResponseDto
+    type: String
   })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
   @ApiBody({ type: RegisterDto })

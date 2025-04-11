@@ -8,7 +8,7 @@ export class EmailVerification extends Document implements IEmailVerification {
   @Prop({ auto: true })
   _id: Types.ObjectId
   @Prop({ required: true })
-  verificationCode: number
+  verificationCode: string
 
   @Prop({ default: Date.now, expires: 180 })
   createdAt: Date

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { MFAType } from '../../../../common/enums'
+import { MFAType } from '../../../common/enums'
 import { IMfaStatus, IMfaStatusResponse } from 'src/common/interfaces/mfa.interface'
 import { Types } from 'mongoose'
 import { IsEnum, Matches } from 'class-validator'

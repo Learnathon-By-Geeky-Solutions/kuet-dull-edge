@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { GenericRepository } from '../../../../common/repository/generic.repository'
+import { GenericRepository } from '../../common/repository/generic.repository'
 import { UserMFA } from './user-mfa.schema'
 import { InjectModel } from '@nestjs/mongoose'
 import { ClientSession, Model, Types } from 'mongoose'

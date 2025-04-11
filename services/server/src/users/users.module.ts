@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose'
 import { UserAuth, UserAuthSchema } from './repository/user-auth.schema'
 import { UserDetails, UserDetailsSchema } from './repository/user-details.schema'
 import { UserPeek, UserPeekSchema } from './repository/user-peek.schema'
-import { UserMFA, UserMFASchema } from '../mfa/repository/user-mfa.schema'
+import { UserMFA, UserMFASchema } from '../auth/repository/user-mfa.schema'
 import {
   UserAuthRepository,
   UserDetailsRepository,

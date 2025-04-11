@@ -6,7 +6,6 @@ import { config } from './config'
 import { JwtModule } from '@nestjs/jwt'
 import { MiddlewareConsumer } from '@nestjs/common/interfaces'
 import { ApiVersionMiddleware } from './middlewares/api-version.middleware'
-import { MfaModule } from './mfa/mfa.module'
 import { ClassroomModule } from './classroom/classroom.module'
 import { ChatModule } from './chat/chat.module'
 import { MaterialsModule } from './materials/materials.module'
@@ -23,7 +22,6 @@ import { TodosModule } from './todos/todos.module'
 
     AuthModule,
     UsersModule,
-    MfaModule,
     ClassroomModule,
     ChatModule,
     MaterialsModule,
@@ -32,7 +30,7 @@ import { TodosModule } from './todos/todos.module'
   ],
   controllers: [],
   providers: [],
-  exports: [MfaModule]
+  exports: []
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

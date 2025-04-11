@@ -33,7 +33,7 @@ export interface IEmailVerify {
 
 export interface IEmailVerification {
   _id: Types.ObjectId
-  verificationCode: number
+  verificationCode: string
   createdAt: Date
   tries: number
 }

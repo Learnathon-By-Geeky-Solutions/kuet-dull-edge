@@ -53,6 +53,7 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
+    "@langchain/ollama": "^0.2.0",
     "@nestjs/common": "^11.0.10",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.10",

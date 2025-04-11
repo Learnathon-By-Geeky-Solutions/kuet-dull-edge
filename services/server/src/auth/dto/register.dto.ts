@@ -14,6 +14,7 @@ export class RegisterDto implements IRegister {
     description: 'Username of the user',
     minLength: 3,
     maxLength: 20,
+    example: 'user_name',
     pattern: '^[a-zA-Z0-9_.]{3,20}$'
   })
   @IsString()
@@ -37,6 +38,7 @@ export class RegisterDto implements IRegister {
     description: 'Password of the user',
     minLength: 8,
     maxLength: 64,
+    example: 'Password123!',
     pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,64}$'
   })
   @IsString()

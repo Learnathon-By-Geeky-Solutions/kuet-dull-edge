@@ -17,6 +17,8 @@ import { JwtStrategy } from './strategies/jwt.strategy'
 import { GoogleStrategy } from './strategies/google.strategy'
 import { GitHubStrategy } from './strategies/github.strategy'
 import { LocalStrategy } from './strategies/local.strategy'
+import { MfaService } from './mfa.service'
+import { UserMFARepository } from './repository/mfa.repository'
 
 @Module({
   imports: [
@@ -35,12 +37,14 @@ import { LocalStrategy } from './strategies/local.strategy'
   controllers: [AuthController],
   providers: [
     AuthService,
+    MfaService,
     JwtStrategy,
     GoogleStrategy,
     GitHubStrategy,
     LocalStrategy,
     EmailVerificationRepository,
-    RefreshTokenRepository
+    RefreshTokenRepository,
+    UserMFARepository
   ],
   exports: [JwtModule, EmailVerificationRepository, RefreshTokenRepository, AuthService]
 })

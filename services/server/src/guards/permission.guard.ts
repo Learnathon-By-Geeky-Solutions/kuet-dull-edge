@@ -19,7 +19,7 @@ export class PermissionGuard implements CanActivate {
     if (requiredPermission === undefined) return true
 
     const { user } = context.switchToHttp().getRequest()
-    const classroomId = context.switchToHttp().getRequest().params.id
+    const classroomId: string = context.switchToHttp().getRequest().params.id
     if (!classroomId) return true //skip permission check if classroomId is not present
 
     return this.classrooomService.permissionCheck(

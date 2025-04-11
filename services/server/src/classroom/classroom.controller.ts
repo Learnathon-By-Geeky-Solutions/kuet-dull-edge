@@ -45,7 +45,7 @@ export class ClassroomController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, PermissionGuard)
   findOne(@Param('id') id: string) {
-    return this.classroomService.findOne(+id)
+    return this.classroomService.findOne(id)
   }
 
   @Patch(':id')

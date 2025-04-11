@@ -13,7 +13,6 @@ import {
 } from './repository/classroom.repository'
 import { Types } from 'mongoose'
 import { IClassMember, IClassroom, IRole } from '../common/interfaces'
-import { SuccessResponseDto } from '../common/dto/success-response.dto'
 import { Permission } from './enums/RolePermissions.enum'
 
 @Injectable()
@@ -61,7 +60,7 @@ export class ClassroomService {
   async create(
     userId: Types.ObjectId,
     createClassroomDto: CreateClassroomDto
-  ): Promise<SuccessResponseDto> {
+  ): Promise<boolean> {
     //check if classroom already exists
     const classroomE = await this.classroomRepository.findOne({
       classroomName: createClassroomDto.classroomName
@@ -70,6 +69,7 @@ export class ClassroomService {
     if (classroomE) throw new ConflictException('CLASSROOM_NAME_ALREADY_EXISTS')
     //TODO: move these to config
     // TODO: Apply transaction later
+
     const classroom: IClassroom = {
       _id: new Types.ObjectId(),
       owner: userId,
@@ -105,27 +105,41 @@ export class ClassroomService {
       classroomId: classroom._id,
       roles: [adminRole._id]
     }
-    const classroomSaved = await this.classroomRepository.create(classroom)
-    const rolesCreated = await this.classRoleRepository.createMany([
-      adminRole,
-      teacherRole,
-      studentRole,
-      classRepRole
-    ])
-    const classMembershipCreated = await this.classMemberShipRepository.create(member)
-    if (!(classroomSaved && rolesCreated && classMembershipCreated)) {
-      // Rollback
-      await this.classroomRepository.deleteOne({ _id: classroom._id })
-      await this.classRoleRepository.deleteOne({ _id: adminRole._id })
-      await this.classRoleRepository.deleteOne({ _id: teacherRole._id })
-      await this.classRoleRepository.deleteOne({ _id: studentRole._id })
-      await this.classRoleRepository.deleteOne({ _id: classRepRole._id })
-      await this.classMemberShipRepository.deleteOne({ userId: member.userId })
-      throw new InternalServerErrorException('DB_ERROR')
+
+    //if (!(classroomSaved && rolesCreated && classMembershipCreated))
+
+    //  // Rollback
+    //  await this.classroomRepository.deleteOne({ _id: classroom._id })
+    //  await this.classRoleRepository.deleteOne({ _id: adminRole._id })
+    //  await this.classRoleRepository.deleteOne({ _id: teacherRole._id })
+    //  await this.classRoleRepository.deleteOne({ _id: studentRole._id })
+    //  await this.classRoleRepository.deleteOne({ _id: classRepRole._id })
+    //  await this.classMemberShipRepository.deleteOne({ userId: member.userId })
+    //  throw new InternalServerErrorException('DB_ERROR')
+    //}
+
+    const session = await this.classroomRepository.startSession()
+    try {
+      const classroomSaved = await this.classroomRepository.create(classroom, session)
+      const rolesCreated = await this.classRoleRepository.createMany(
+        [adminRole, teacherRole, studentRole, classRepRole],
+        session
+      )
+      const classMembershipCreated = await this.classMemberShipRepository.create(
+        member,
+        session
+      )
+      if (!(classroomSaved && rolesCreated && classMembershipCreated)) {
+        throw new InternalServerErrorException('DB_ERROR')
+      }
+      await session.commitTransaction()
+    } catch (e) {
+      console.error(e)
+      await session.abortTransaction()
+      throw new InternalServerErrorException('DB_ERR')
     }
-    return {
-      success: true
-    }
+    await session.endSession()
+    return true
   }
 
   findOwn(userId: string) {

@@ -12,7 +12,6 @@ import {
 import * as crypto from 'crypto'
 
 import { EmailVerifyDto, OAuthOnboardingDto, OnboardingDto, RegisterDto } from './dto'
-import { TokenResponseDto } from '../common/dto/token-response.dto'
 import {
   EmailVerificationRepository,
   RefreshTokenRepository
@@ -35,16 +34,14 @@ export class AuthService {
     private readonly userDetailsRepository: UserDetailsRepository
   ) {}
 
-  getAnonymousToken(): TokenResponseDto {
-    return {
-      token: this.jwtService.sign(
-        {
-          _id: null,
-          accountStatus: AccountStatus.ANONYMOUS
-        },
-        { expiresIn: '1d' }
-      )
-    }
+  getAnonymousToken(): string {
+    return this.jwtService.sign(
+      {
+        _id: null,
+        accountStatus: AccountStatus.ANONYMOUS
+      },
+      { expiresIn: '1d' }
+    )
   }
 
   /**
@@ -74,7 +71,7 @@ export class AuthService {
   async validateUser(
     username: string,
     password: string
-  ): Promise<{ token: string; refreshToken: string }> {
+  ): Promise<{ token: string; refreshToken?: string }> {
     // TODO : MFA
     const user = await this.userAuthRepository.findByEmailOrUsername('', username)
     if (!user) throw new UnauthorizedException('INVALID_CREDENTIALS')
@@ -191,11 +188,7 @@ export class AuthService {
   }
 
   /* Registration */
-  async registerLocal({
-    username,
-    password,
-    email
-  }: RegisterDto): Promise<{ token: string }> {
+  async registerLocal({ username, password, email }: RegisterDto): Promise<string> {
     const existingUser = await this.userAuthRepository.findByEmailOrUsername(
       email,
       username
@@ -219,12 +212,7 @@ export class AuthService {
     // Send verification email
     this.sendVerificationEmail(email, verificationCode)
 
-    const token = await this.getRegisterToken(
-      userAuth._id,
-      AccountStatus.EMAIL_VERIFICATION
-    )
-
-    return { token }
+    return await this.getRegisterToken(userAuth._id, AccountStatus.EMAIL_VERIFICATION)
   }
 
   async createVerification(userId: Types.ObjectId): Promise<number> {

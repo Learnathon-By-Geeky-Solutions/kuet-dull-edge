@@ -25,7 +25,7 @@ export class EmailVerificationRepository extends GenericRepository<EmailVerifica
     userId: Types.ObjectId,
     session?: ClientSession
   ): Promise<boolean> {
-    const result = await this.delete({ _id: userId }, session)
+    const result = await this.deleteOne({ _id: userId }, session)
     return !!result
   }
 

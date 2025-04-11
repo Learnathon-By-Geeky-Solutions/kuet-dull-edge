@@ -1,4 +1,5 @@
 import { Types } from 'mongoose'
+import { MaterialOwner, MaterialStatus } from '../enums'
 
 /*
  * If uploaded to classroom - the classroom wii be the owner
@@ -7,6 +8,17 @@ import { Types } from 'mongoose'
  *
  * User can only share materials with other users
  * Classrooms can make a material public and share with other classrooms, no one to one sharing
+ *
+ *
+ * Tags are very important - for grouping items
+ *
+ * Should We go for a role based access
+ * 1. SEE_ALL_MATERIALS = 1<<30 , something like that - this one's cheaper, idea re usable to routine events
+ * 2. or give access to specific roles
+ *
+ * Need to design reoutine too - evnts on calendar, persistent with exceptions??
+ * 1. CR /Owner
+ * 2. Teacher
  */
 
 export interface IMaterial {
@@ -16,17 +28,18 @@ export interface IMaterial {
   fileType: string
   fileSize: number // in bytes
   filePath: string // S3 path
-  uploadedAt: Date
+  createdAt: Date
   lastModified: Date
 
   // Ownership info
   ownerId: Types.ObjectId // User or classroom that owns the material
   classOwnerId?: Types.ObjectId // Classroom ID if owner is a classroom
-  ownerType: 'user' | 'classroom' // Type of owner
+  ownerType: MaterialOwner // Type of owner
   uploaderId: Types.ObjectId // Always a user ID who uploaded the file
+  deleted?: boolean
 
   tags?: string[]
-  isPublic: boolean
+  isPublic?: boolean
 }
 
 export interface IMaterialClassroom {
@@ -34,8 +47,8 @@ export interface IMaterialClassroom {
   materialId: Types.ObjectId
   classroomId: Types.ObjectId
   addedBy: Types.ObjectId // User ID who added this to classroom
+  status: MaterialStatus
   addedAt: Date
-  status: 'active' | 'archived' | 'removed'
 }
 
 export interface IMaterialShare {
