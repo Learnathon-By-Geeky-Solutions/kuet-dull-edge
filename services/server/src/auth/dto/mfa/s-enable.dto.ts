@@ -1,4 +1,4 @@
-import { IMfaEnableResult } from '../../common/interfaces/mfa.interface'
+import { IMfaEnableResult } from '../../../../common/interfaces/mfa.interface'
 import { ApiProperty } from '@nestjs/swagger'
 
 export class MfaSEnableResultDto implements IMfaEnableResult {

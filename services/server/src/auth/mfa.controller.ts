@@ -9,8 +9,8 @@ import {
 } from '@nestjs/common'
 import { MfaService } from './mfa.service'
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
-import { JwtAuthGuard } from '../guards/jwt-auth.guard'
-import { AccountStatus } from '../common/enums'
+import { JwtAuthGuard } from '../../../guards/jwt-auth.guard'
+import { AccountStatus } from '../../../common/enums'
 import {
   MfaRecoveryDto,
   MfaSEnableResultDto,
@@ -19,11 +19,11 @@ import {
   MfaStatusResponseDto,
   MfaVerifyDto
 } from './dto'
-import { SuccessResponseDto } from '../common/dto/success-response.dto'
+import { SuccessResponseDto } from '../../../common/dto/success-response.dto'
 
 @ApiTags('MFA')
 @ApiBearerAuth()
-@Controller('/auth/dto')
+@Controller('/auth/mfa')
 export class MfaController {
   constructor(private readonly mfaService: MfaService) {}
 

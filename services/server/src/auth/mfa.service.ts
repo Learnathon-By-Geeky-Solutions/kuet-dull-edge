@@ -3,11 +3,11 @@ import { BadRequestException } from '@nestjs/common/exceptions/bad-request.excep
 import { Types } from 'mongoose'
 import * as speakeasy from 'speakeasy'
 import * as crypto from 'crypto'
-import { MFAType } from '../common/enums'
-import { UserAuthRepository } from '../users/repository/users.repository'
+import { MFAType } from '../../../common/enums'
+import { UserAuthRepository } from '../../../users/repository/users.repository'
 import { UserMFARepository } from './repository/mfa.repository'
-import { EmailVerificationRepository } from '../auth/repository/auth.repository'
-import { AuthService } from '../auth/auth.service'
+import { EmailVerificationRepository } from '../../repository/auth.repository'
+import { AuthService } from '../../auth.service'
 import { IMfaStatusResponse } from 'src/common/interfaces/mfa.interface'
 
 @Injectable()
