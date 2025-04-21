@@ -1,3 +1,3 @@
-FROM mongo:6.0.20
+FROM mongo:6.0.22
 EXPOSE 27017
 CMD ["mongod", "--bind_ip_all"]
